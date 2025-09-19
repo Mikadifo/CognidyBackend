@@ -18,7 +18,7 @@ It follows a **branch-based workflow** to keep development organized and easy to
 
 ## 🌱 Development Workflow
 
-- Every task must be developed in a **new branch**, based on naming conventions:
+- Every task must be developed in a **new branch** based off the `dev` branch, based on naming conventions:
 
   - Features → `feature/<name>`  
     Example: `feature/user-authentication`
