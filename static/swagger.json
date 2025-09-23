@@ -3,12 +3,20 @@
   "info": {
     "title": "Cognidy Backend API",
     "version": "1.0.0",
-    "description": "API documentation for user authentication routes"
   },
-  "basePath": "/",
-  "schemes": ["http"],
+  "basePath": "/api",
   "paths": {
-    "/signup": {
+    "/": {
+      "get": {
+        "summary": "Say Hello",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/users/signup": {
       "post": {
         "summary": "User signup",
         "description": "Register a new user with username, email, and password.",
@@ -35,7 +43,7 @@
         }
       }
     },
-    "/login": {
+    "/users/login": {
       "post": {
         "summary": "User login",
         "description": "Login with username and password.",
