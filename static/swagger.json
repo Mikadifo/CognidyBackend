@@ -1,0 +1,20 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Cognidy API",
+    "version": "1.0.0"
+  },
+  "basePath": "/api",
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Say Hello",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    }
+  }
+}
