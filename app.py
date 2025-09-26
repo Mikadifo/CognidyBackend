@@ -13,7 +13,7 @@ def home():
 
 @app.route("/users", methods = ["GET"])
 def get_test_user():
-    user = db["users"].find_one()
+    user = get_users_collection().find_one()
     if not user:
         return jsonify({"error": "No user found"}), 404
     user["_id"] = str(user["_id"])
