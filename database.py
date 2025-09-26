@@ -4,18 +4,34 @@ from pymongo import MongoClient
 from flask import Flask
 from dotenv import load_dotenv
 import os
+
 load_dotenv()
 
-#setting up database connection
-uri = os.getenv("MONGODB_URI")
+#setting up database connection, assertion of environment variables to ensure the database can be accessed
+DB_USERNAME = os.getenv("DB_USERNAME")
+assert DB_USERNAME is not None and len(DB_USERNAME) > 0, "DB_USERNAME environment variable does not exist, or is empty"
+
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+assert DB_PASSWORD is not None and len(DB_PASSWORD) > 0, "DB_PASSWORD environment variable does not exist, or is empty"
+
+DB_NAME = os.getenv("DB_NAME")
+assert DB_NAME is not None and len(DB_NAME) > 0, "DB_NAME environment variable does not exist, or is empty"
+
+uri = f"mongodb+srv://{DB_USERNAME}:{DB_PASSWORD}@cognidy-cluster.oq1fqvx.mongodb.net/{DB_NAME}?retryWrites=true&w=majority&appName=cognidy-cluster"
 client = MongoClient(uri)
 
 #creating database instance
-db = client[os.getenv("DB_NAME")]
+db = client[DB_NAME]
 
-#creation of collections using environment variables
-userCollection = db[os.getenv("U_COL")]
-thesaurusCollection = db[os.getenv("T_COL")]
+#retrieval and assertion of collection names from environment variables, starting with U_COL
+u_collection = os.getenv("U_COL")
+assert u_collection is not None and len(u_collection) > 0, "U_COL environment variable does not exist, or is empty"
+
+t_collection = os.getenv("T_COL")
+assert t_collection is not None and len(t_collection) > 0, "T_COL environment variable does not exist, or is empty"
+
+userCollection = db[u_collection]
+thesaurusCollection = db[t_collection]
 
 def get_db():
     return db

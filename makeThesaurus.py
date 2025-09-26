@@ -6,7 +6,7 @@ nltk.download('wordnet')
 
 from nltk.corpus import wordnet as wn
 
-#creation of theasaurus database
+#creation of thesaurus database
 def make_thesaurus(wn):
       thesaurus = {}
       for synset in wn.all_synsets():
