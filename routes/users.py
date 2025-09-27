@@ -1,7 +1,6 @@
-import os
 import bcrypt
+from database import get_db, get_users_collection
 from flask import Blueprint, request, jsonify
-from pymongo import MongoClient
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -11,9 +10,8 @@ load_dotenv()
 users_bp = Blueprint("users", __name__)
 
 # MongoDB setup
-client = MongoClient(os.getenv("MONGO_URL"))
-db = client["cognidy_db"]
-users = db["users"]
+db = get_db()
+
 
 # Signup route
 @users_bp.route("/signup", methods=["POST"])
@@ -27,18 +25,16 @@ def signup():
         return jsonify({"message": "All fields are required"}), 400
 
     # Check if user already exists
-    if users.find_one({"username": username}):
+    if get_users_collection().find_one({"username": username}):
         return jsonify({"message": "Username already exists"}), 400
 
     # Hash the password
     hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
 
     # Insert user
-    users.insert_one({
-        "username": username,
-        "email": email,
-        "password": hashed_pw
-    })
+    get_users_collection().insert_one(
+        {"username": username, "email": email, "password": hashed_pw}
+    )
 
     return jsonify({"message": "Signup successful!"}), 201
 
@@ -53,7 +49,7 @@ def login():
     if not username or not password:
         return jsonify({"message": "Username and password required"}), 400
 
-    user = users.find_one({"username": username})
+    user = get_users_collection().find_one({"username": username})
 
     if user and bcrypt.checkpw(password.encode("utf-8"), user["password"]):
         return jsonify({"message": "Login successful"}), 200
