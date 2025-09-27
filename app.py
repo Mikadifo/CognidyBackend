@@ -18,9 +18,6 @@ swaggerui_blueprint = get_swaggerui_blueprint(
     SWAGGER_URL, API_URL, config={"app_name": "Cognidy API"}
 )
 
-app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
-app.register_blueprint(api_bp, url_prefix="/api")
-
 
 @api_bp.route("/", methods=["GET"])
 def home():
@@ -36,6 +33,9 @@ def get_test_user():
     user["_id"] = str(user["_id"])
     return jsonify(user), 200
 
+
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+app.register_blueprint(api_bp, url_prefix="/api")
 
 if __name__ == "__main__":
     app.run(debug=True)
