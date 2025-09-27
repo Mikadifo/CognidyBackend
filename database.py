@@ -1,7 +1,6 @@
 # database connection and collection retrieval
 
 from pymongo import MongoClient
-from flask import Flask
 from dotenv import load_dotenv
 import os
 
@@ -49,4 +48,3 @@ def get_users_collection():
 
 def get_thesaurus_collection():
     return thesaurusCollection
-

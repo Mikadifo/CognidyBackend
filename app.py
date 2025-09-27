@@ -1,17 +1,17 @@
 from flask import Flask
-from database import get_db, get_thesaurus_collection, get_users_collection
-from flask import jsonify
 from flask import Blueprint, Flask
+from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
+from routes.users import users_bp  # import the blueprint
 
 app = Flask(__name__)
+CORS(app)  # allow frontend to talk to backend
 
 # Get database instance (connection handled in database.py)
-db = get_db()
 api_bp = Blueprint("api", __name__)
 
 
-SWAGGER_URL = "/docs"
+SWAGGER_URL = "/api/v1/docs"
 API_URL = "/static/swagger.json"
 
 swaggerui_blueprint = get_swaggerui_blueprint(
@@ -24,18 +24,10 @@ def home():
     return "Hello!"
 
 
-# TODO: remove this, just testing
-@app.route("/users", methods=["GET"])
-def get_test_user():
-    user = get_users_collection().find_one()
-    if not user:
-        return jsonify({"error": "No user found"}), 404
-    user["_id"] = str(user["_id"])
-    return jsonify(user), 200
-
-
-app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+# Register blueprints
 app.register_blueprint(api_bp, url_prefix="/api")
+app.register_blueprint(users_bp, url_prefix="/api/users")
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=8000)
