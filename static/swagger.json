@@ -78,6 +78,17 @@
         }
       }
     },
+    "/notes/": {
+      "get": {
+        "summary": "Get all user notes",
+        "description": "Find all user notes from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Notes Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
+    },
     "/notes/upload/auth": {
       "post": {
         "summary": "Generate content for authenticated users",

@@ -15,6 +15,23 @@ notes_bp = Blueprint("notes", __name__)
 # MongoDB setup
 db = get_db()
 
+@notes_bp.route("/", methods=["GET"])
+@jwt_required()
+def get_notes():
+    username = get_jwt_identity()
+
+    user = get_users_collection().find_one({"username": username})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user_notes = user.get("notes", [])
+
+    for note in user_notes:
+        if "_id" in note:
+            note["_id"] = str(note["_id"])
+
+    return jsonify({"message": "Notes retrieved successfully", "data": user_notes})
+
 @notes_bp.route("/upload/guest", methods=["POST"])
 def upload_guest():
     if "file" not in request.files:
