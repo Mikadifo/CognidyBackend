@@ -2,7 +2,15 @@
   "swagger": "2.0",
   "info": {
     "title": "Cognidy Backend API",
-    "version": "1.0.0",
+    "version": "1.0.0"
+  },
+  "securityDefinitions": {
+    "Bearer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token} "
+    }
   },
   "basePath": "/api",
   "paths": {
@@ -67,6 +75,59 @@
           "200": { "description": "Login successful" },
           "401": { "description": "Invalid credentials" },
           "400": { "description": "Missing fields" }
+        }
+      }
+    },
+    "/notes/": {
+      "get": {
+        "summary": "Get all user notes",
+        "description": "Find all user notes from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Notes Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
+    },
+    "/notes/upload/auth": {
+      "post": {
+        "summary": "Generate content for authenticated users",
+        "description": "Generate and save flashcards, puzzles and roadmap goals from an uploaded file to MongoDB",
+        "consumes": ["multipart/form-data"],
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "formData",
+            "name": "file",
+            "type": "file",
+            "required": true,
+            "description": "User notes file"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Content Generated Successfully" },
+          "400": { "description": "Missing or invalid file" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
+    },
+    "/notes/upload/guest": {
+      "post": {
+        "summary": "Generate content for guest users",
+        "description": "Generate and return flashcards and puzzles from an uploaded file",
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {
+            "in": "formData",
+            "name": "file",
+            "type": "file",
+            "required": true,
+            "description": "User notes file"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Content Generated Successfully" },
+          "400": { "description": "Missing or invalid file" }
         }
       }
     }

@@ -1,17 +1,15 @@
+from re import I
 import bcrypt
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended.utils import create_access_token
 from database import get_db, get_users_collection
 from flask import Blueprint, request, jsonify
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 # Create Blueprint
 users_bp = Blueprint("users", __name__)
 
 # MongoDB setup
 db = get_db()
-
 
 # Signup route
 @users_bp.route("/signup", methods=["POST"])
@@ -29,14 +27,16 @@ def signup():
         return jsonify({"message": "Username already exists"}), 400
 
     # Hash the password
-    hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    hashed_pw = generate_password_hash(password)
 
     # Insert user
     get_users_collection().insert_one(
         {"username": username, "email": email, "password": hashed_pw}
     )
 
-    return jsonify({"message": "Signup successful!"}), 201
+    access_token = create_access_token(identity=username)
+
+    return jsonify({"message": "Signup successful!", "access_token": access_token}), 201
 
 
 # Login route
@@ -51,7 +51,8 @@ def login():
 
     user = get_users_collection().find_one({"username": username})
 
-    if user and bcrypt.checkpw(password.encode("utf-8"), user["password"]):
-        return jsonify({"message": "Login successful"}), 200
+    if user and check_password_hash(user["password"], password):
+        access_token = create_access_token(identity=user["username"])
+        return jsonify({"message": "Login successful", "access_token": access_token}), 200
     else:
         return jsonify({"message": "Invalid credentials"}), 401
