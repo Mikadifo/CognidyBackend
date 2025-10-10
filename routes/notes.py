@@ -82,7 +82,9 @@ def upload_auth():
     }
     get_users_collection().find_one_and_update({"username": username}, {"$push": {"notes": note}})
 
-    return jsonify({"message": "File uploaded successfully"}), 200
+    note["_id"] = str(note["_id"])
+
+    return jsonify({"message": "File uploaded successfully", "data": note}), 200
 
 @notes_bp.route("/delete/<note_id>", methods=["DELETE"])
 @jwt_required()
