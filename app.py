@@ -16,7 +16,12 @@ app.config["JWT_SECRET_KEY"] = env.JWT_SECRET_KEY
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=15)
 
 jwt = JWTManager(app)
-CORS(app, origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app/"])  # allow frontend to talk to backend
+CORS(
+    app,
+    origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app/"],
+    supports_credentials=True,
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
 
 # Get database instance (connection handled in database.py)
 api_bp = Blueprint("api", __name__)
