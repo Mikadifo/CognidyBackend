@@ -1,4 +1,3 @@
-# Create Blueprint
 from datetime import datetime, timezone
 import hashlib
 from bson import ObjectId
@@ -9,10 +8,7 @@ from flask import Blueprint, jsonify, request
 from services.notes_service import generate_content
 
 MAX_UPLOADS = 5
-
 notes_bp = Blueprint("notes", __name__)
-
-# MongoDB setup
 db = get_db()
 
 @notes_bp.route("/", methods=["GET"])
@@ -87,3 +83,25 @@ def upload_auth():
     get_users_collection().find_one_and_update({"username": username}, {"$push": {"notes": note}})
 
     return jsonify({"message": "File uploaded successfully"}), 200
+
+@notes_bp.route("/delete/<note_id>", methods=["DELETE"])
+@jwt_required()
+def delete_note(note_id):
+    username = get_jwt_identity()
+
+    user = get_users_collection().find_one({"username": username})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        note_oid = ObjectId(note_id)
+    except Exception:
+        return jsonify({"error": "Invalid note ID"}), 400
+
+    result = get_users_collection().update_one({"username": username}, {"$pull": {"notes": {"_id": note_oid}}})
+
+    if result.modified_count == 0:
+        return jsonify({"error": "Note not found for this user"}), 404
+
+    return jsonify({"message": "Note was deleted"}), 200
+
