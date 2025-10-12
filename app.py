@@ -1,5 +1,5 @@
 from datetime import timedelta
-from flask import Flask
+from flask import Flask, Response, request
 from flask import Blueprint, Flask
 from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
@@ -16,7 +16,17 @@ app.config["JWT_SECRET_KEY"] = env.JWT_SECRET_KEY
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=15)
 
 jwt = JWTManager(app)
-CORS(app)  # allow frontend to talk to backend
+CORS(
+    app,
+    origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app"],
+    supports_credentials=True,
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
+
+@app.before_request
+def handle_options():
+    if request.method == 'OPTIONS':
+        return Response(status=200)
 
 # Get database instance (connection handled in database.py)
 api_bp = Blueprint("api", __name__)

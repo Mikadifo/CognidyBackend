@@ -1,5 +1,3 @@
-from re import I
-import bcrypt
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended.utils import create_access_token
 from database import get_db, get_users_collection
