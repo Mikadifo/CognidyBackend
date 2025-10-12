@@ -9,6 +9,7 @@ class EnvConfig(BaseModel):
     DB_PASSWORD: str = Field(..., description="Mongo DB Password string")
     DB_NAME: str = Field(..., description="Mongo DB Name string")
     JWT_SECRET_KEY: str = Field(..., description="JWT Secret Key string")
+    GENAI_API_KEY: str = Field(..., description="Google Gemini API Key")
 
 def get_env_config() -> EnvConfig:
     try:

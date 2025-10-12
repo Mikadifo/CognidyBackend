@@ -4,8 +4,7 @@ from bson import ObjectId
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from database import get_db, get_users_collection
 from flask import Blueprint, jsonify, request
-
-from services.notes_service import generate_content
+from services.roadmap_service import generate_roadmap_goals
 
 MAX_UPLOADS = 5
 notes_bp = Blueprint("notes", __name__)
@@ -38,7 +37,8 @@ def upload_guest():
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
-    data = generate_content(file, True)
+    # data = TODO: call each MVP generate service, but roadmap_service
+    data = []
 
     return jsonify({"message": "Content generated for guest user", "data": data}), 200
 
@@ -71,15 +71,22 @@ def upload_auth():
     if file_hash in note_hashes:
         return jsonify({"error": "This file has already been uploaded"}), 400
 
-    data = generate_content(file, False)
-    # TODO: store data in DB
-
     note = {
             "_id": ObjectId(),
             "filename": file.filename,
             "hash": file_hash,
             "created_at": datetime.now(timezone.utc)
     }
+
+    # TODO: Call 3 MVPS here for generation
+    generate_roadmap_goals(file)
+    # TODO: call generate flashcards
+    # TODO: call generate puzzles
+
+    if generate_roadmap_goals:
+        # TODO: save generated content to DB
+        print()
+
     get_users_collection().find_one_and_update({"username": username}, {"$push": {"notes": note}})
 
     note["_id"] = str(note["_id"])
