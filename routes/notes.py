@@ -1,18 +1,13 @@
-# Create Blueprint
 from datetime import datetime, timezone
 import hashlib
 from bson import ObjectId
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from database import get_db, get_users_collection
 from flask import Blueprint, jsonify, request
-
-from services.notes_service import generate_content
+from services.roadmap_service import generate_roadmap_goals
 
 MAX_UPLOADS = 5
-
 notes_bp = Blueprint("notes", __name__)
-
-# MongoDB setup
 db = get_db()
 
 @notes_bp.route("/", methods=["GET"])
@@ -42,7 +37,8 @@ def upload_guest():
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
-    data = generate_content(file, True)
+    # data = TODO: call each MVP generate service, but roadmap_service
+    data = {} # of type {flashcards: [], puzzles: []}
 
     return jsonify({"message": "Content generated for guest user", "data": data}), 200
 
@@ -75,15 +71,46 @@ def upload_auth():
     if file_hash in note_hashes:
         return jsonify({"error": "This file has already been uploaded"}), 400
 
-    data = generate_content(file, False)
-    # TODO: store data in DB
-
     note = {
             "_id": ObjectId(),
             "filename": file.filename,
             "hash": file_hash,
             "created_at": datetime.now(timezone.utc)
     }
+
+    # TODO: Call 3 MVPS here for generation
+    generate_roadmap_goals(file)
+    # TODO: call generate flashcards
+    # TODO: call generate puzzles
+
+    if generate_roadmap_goals:
+        # TODO: save generated content to DB
+        print()
+
     get_users_collection().find_one_and_update({"username": username}, {"$push": {"notes": note}})
 
-    return jsonify({"message": "File uploaded successfully"}), 200
+    note["_id"] = str(note["_id"])
+
+    return jsonify({"message": "File uploaded successfully", "data": note}), 200
+
+@notes_bp.route("/delete/<note_id>", methods=["DELETE"])
+@jwt_required()
+def delete_note(note_id):
+    username = get_jwt_identity()
+
+    user = get_users_collection().find_one({"username": username})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        note_oid = ObjectId(note_id)
+    except Exception:
+        return jsonify({"error": "Invalid note ID"}), 400
+
+    result = get_users_collection().update_one({"username": username}, {"$pull": {"notes": {"_id": note_oid}}})
+
+    if result.modified_count == 0:
+        return jsonify({"error": "Note not found for this user"}), 404
+
+    return jsonify({"message": "Note was deleted"}), 200
+
