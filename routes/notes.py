@@ -38,7 +38,7 @@ def upload_guest():
         return jsonify({"error": "No selected file"}), 400
 
     # data = TODO: call each MVP generate service, but roadmap_service
-    data = []
+    data = {} # of type {flashcards: [], puzzles: []}
 
     return jsonify({"message": "Content generated for guest user", "data": data}), 200
 
