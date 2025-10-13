@@ -35,7 +35,7 @@ def create_goal():
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        goals = get_roadmap_goals_collection().find({"user_id": str(user["_id"])}, {"order": 1})
+        goals = get_roadmap_goals_collection().find({"user_id": str(user["_id"])}, {"order": 1, "completed": 1})
         goals.sort("order")
         goals = goals.to_list()
         goals_size = len(goals)
@@ -47,11 +47,19 @@ def create_goal():
         new_goal["_id"] = ObjectId()
         new_goal["user_id"] = str(user["_id"])
 
-        if new_goal["order"] > goals[goals_size - 1]["order"] + 1:
+        if len(goals) == 0:
+            get_roadmap_goals_collection().insert_one(new_goal)
+            return jsonify({"message": "Roadmap Goal created successfully"}), 201
+
+        new_order = new_goal["order"]
+
+        if new_order > goals[goals_size - 1]["order"] + 1:
             new_goal["order"] = goals[goals_size - 1]["order"] + 1
             get_roadmap_goals_collection().insert_one(new_goal)
 
             return jsonify({"message": "Roadmap Goal created successfully"}), 201
+
+        new_goal["completed"] = goals[new_order - 1]["completed"]
 
         get_roadmap_goals_collection().update_many(
                 {"user_id": str(user["_id"]), "order": {"$gte": new_goal["order"]}},
