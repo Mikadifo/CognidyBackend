@@ -3,6 +3,7 @@
 from pymongo import MongoClient
 
 from config.env_config import get_env_config
+from constants.collections import Collection
 
 env = get_env_config()
 
@@ -13,24 +14,21 @@ client = MongoClient(uri)
 # creating database instance
 db = client[env.DB_NAME]
 
-userCollection = db["users"]
-thesaurusCollection = db["thesaurus"]
-flashcardsCollection = db["flashcards"]
-puzzlesCollection = db["puzzles"]
-roadmapGoalsCollection = db["roadmap_goals"]
-
 
 def get_db():
     return db
 
 def get_users_collection():
-    return userCollection
+    return db[Collection.USERS.value]
 
 def get_thesaurus_collection():
-    return thesaurusCollection
+    return db[Collection.THESAURUS.value]
+
+def get_flashcards_collection():
+    return db[Collection.FLASHCARDS.value]
 
 def get_puzzles_collection():
-    return puzzlesCollection
+    return db[Collection.PUZZLES.value]
 
 def get_roadmap_goals_collection():
-    return roadmapGoalsCollection
+    return db[Collection.ROADMAP_GOALS.value]

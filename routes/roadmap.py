@@ -7,7 +7,7 @@ roadmap_bp = Blueprint("roadmap", __name__)
 # MongoDB setup
 db = get_db()
 
-@roadmap_bp.route("/", methods=["GET"])
+@roadmap_bp.route("/goals", methods=["GET"])
 @jwt_required()
 def get_goals():
     username = get_jwt_identity()
@@ -16,7 +16,8 @@ def get_goals():
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    roadmap_goals = get_roadmap_goals_collection().find({"user_id": str(user["_id"])})
-    print(roadmap_goals)
+    roadmap_goals = get_roadmap_goals_collection().find({"user_id": str(user["_id"])}, {"_id": 0, "user_id": 0})
+    roadmap_goals.sort("order")
+    roadmap_goals = roadmap_goals.to_list()
 
     return jsonify({"message": "Notes retrieved successfully", "data": roadmap_goals})

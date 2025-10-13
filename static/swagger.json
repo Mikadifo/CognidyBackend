@@ -158,6 +158,18 @@
           "404": { "description": "User/Note not found" }
         }
       }
+    },
+    "/roadmap/goals": {
+      "get": {
+        "tags": ["Roadmap"],
+        "summary": "Get all user roadmap goals",
+        "description": "Find all roadmap goals linked to the user from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Roadmap Goals Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
     }
   },
   "tags": [
@@ -168,6 +180,10 @@
     {
       "name": "Notes",
       "description": "User file notes"
+    },
+    {
+      "name": "Roadmap",
+      "description": "Roadmap Goals"
     }
   ]
 }
