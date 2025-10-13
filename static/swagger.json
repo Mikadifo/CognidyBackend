@@ -141,7 +141,6 @@
         "tags": ["Notes"],
         "summary": "Deletes user note",
         "description": "Deletes a user note using the given note object id",
-        "consumes": ["multipart/form-data"],
         "security": [{ "Bearer": [] }],
         "parameters": [
           {
@@ -158,6 +157,106 @@
           "404": { "description": "User/Note not found" }
         }
       }
+    },
+    "/roadmap_goals/": {
+      "get": {
+        "tags": ["Roadmap"],
+        "summary": "Get all user roadmap goals",
+        "description": "Find all roadmap goals linked to the user from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Roadmap Goals Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
+    },
+    "/roadmap_goals/new": {
+      "post": {
+        "tags": ["Roadmap"],
+        "summary": "Create a new custom roadmap goal",
+        "description": "Adds a new goal and rearranges goals based on order",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "User custom goal",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "order": { "type": "integer" },
+                "title": { "type": "string" },
+                "brief": { "type": "string" }
+              },
+              "required": ["order", "title", "brief"]
+            }
+          }
+        ],
+        "responses": {
+          "201": { "description": "User Roadmap Goal Created Successfully" },
+          "400": { "description": "Missing or invalid fields" },
+          "401": { "description": "Missing or invalid token" },
+          "409": { "description": "User can only have up to 20 goals" }
+        }
+      }
+    },
+    "/roadmap_goals/delete/{goal_order}": {
+      "delete": {
+        "tags": ["Roadmap"],
+        "summary": "Deletes user goal",
+        "description": "Deletes a user goal using the given goal order",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "goal_order",
+            "type": "integer",
+            "required": true,
+            "description": "User goal order"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Goal deleted" },
+          "400": { "description": "Missing or invalid fields" },
+          "404": { "description": "User/Goal not found" }
+        }
+      }
+    },
+    "/roadmap_goals/complete/{goal_order}": {
+      "put": {
+        "tags": ["Roadmap"],
+        "summary": "Updates user goal completion",
+        "description": "Marks user goal as completed or not based on the given boolean",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "goal_order",
+            "type": "integer",
+            "required": true,
+            "description": "User goal order"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Goal completion boolean",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "completed": { "type": "boolean" }
+              },
+              "required": ["completed"]
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Goal completion updated" },
+          "400": { "description": "Missing or invalid fields" },
+          "404": { "description": "User/Goal not found" }
+        }
+      }
     }
   },
   "tags": [
@@ -168,6 +267,10 @@
     {
       "name": "Notes",
       "description": "User file notes"
+    },
+    {
+      "name": "Roadmap",
+      "description": "Roadmap Goals"
     }
   ]
 }

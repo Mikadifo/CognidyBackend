@@ -2,13 +2,12 @@ from datetime import datetime, timezone
 import hashlib
 from bson import ObjectId
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from database import get_db, get_users_collection
+from database import get_users_collection
 from flask import Blueprint, jsonify, request
 from services.roadmap_service import generate_roadmap_goals
 
 MAX_UPLOADS = 5
 notes_bp = Blueprint("notes", __name__)
-db = get_db()
 
 @notes_bp.route("/", methods=["GET"])
 @jwt_required()
@@ -25,7 +24,7 @@ def get_notes():
         if "_id" in note:
             note["_id"] = str(note["_id"])
 
-    return jsonify({"message": "Notes retrieved successfully", "data": user_notes})
+    return jsonify({"message": "Notes retrieved successfully", "data": user_notes}), 200
 
 @notes_bp.route("/upload/guest", methods=["POST"])
 def upload_guest():
@@ -91,7 +90,7 @@ def upload_auth():
 
     note["_id"] = str(note["_id"])
 
-    return jsonify({"message": "File uploaded successfully", "data": note}), 200
+    return jsonify({"message": "File uploaded successfully", "data": note}), 201
 
 @notes_bp.route("/delete/<note_id>", methods=["DELETE"])
 @jwt_required()

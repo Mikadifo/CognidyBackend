@@ -1,13 +1,10 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended.utils import create_access_token
-from database import get_db, get_users_collection
+from database import get_users_collection
 from flask import Blueprint, request, jsonify
 
 # Create Blueprint
 users_bp = Blueprint("users", __name__)
-
-# MongoDB setup
-db = get_db()
 
 # Signup route
 @users_bp.route("/signup", methods=["POST"])
