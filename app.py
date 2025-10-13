@@ -6,7 +6,7 @@ from flask_swagger_ui import get_swaggerui_blueprint
 from config.env_config import get_env_config
 from routes.users import users_bp
 from routes.notes import notes_bp
-from routes.roadmap import roadmap_bp
+from routes.roadmap_goals import roadmap_bp
 from flask_jwt_extended import JWTManager
 
 env = get_env_config()
@@ -50,7 +50,7 @@ def home():
 app.register_blueprint(api_bp, url_prefix="/api")
 app.register_blueprint(users_bp, url_prefix="/api/users")
 app.register_blueprint(notes_bp, url_prefix="/api/notes")
-app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap")
+app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap_goals")
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 if __name__ == "__main__":
