@@ -218,7 +218,42 @@
         ],
         "responses": {
           "200": { "description": "Goal deleted" },
-          "400": { "description": "Missing or invalid file" },
+          "400": { "description": "Missing or invalid fields" },
+          "404": { "description": "User/Goal not found" }
+        }
+      }
+    },
+    "/roadmap_goals/complete/{goal_order}": {
+      "put": {
+        "tags": ["Roadmap"],
+        "summary": "Updates user goal completion",
+        "description": "Marks user goal as completed or not based on the given boolean",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "goal_order",
+            "type": "integer",
+            "required": true,
+            "description": "User goal order"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Goal completion boolean",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "completed": { "type": "boolean" }
+              },
+              "required": ["completed"]
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Goal completion updated" },
+          "400": { "description": "Missing or invalid fields" },
           "404": { "description": "User/Goal not found" }
         }
       }

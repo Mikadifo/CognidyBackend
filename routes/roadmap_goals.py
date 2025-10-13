@@ -87,3 +87,31 @@ def delete_goal(goal_order):
 
     return jsonify({"message": "Goal was deleted"}), 200
 
+@roadmap_bp.route("/complete/<int:goal_order>", methods=["PUT"])
+@jwt_required()
+def set_goal_completion(goal_order):
+    username = get_jwt_identity()
+    data = request.get_json()
+    completed = data.get("completed")
+
+    if completed is None:
+        return jsonify({"error": "Missing 'completed' field"}), 400
+
+    user = get_users_collection().find_one({"username": username})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    order_filter = {"$gte": goal_order}
+
+    if completed:
+        order_filter = goal_order
+
+    result = get_roadmap_goals_collection().update_many(
+            {"user_id": str(user["_id"]), "order": order_filter},
+            {"$set": {"completed": completed}}
+    )
+
+    if result.matched_count == 0:
+        return jsonify({"error": "Goal not found"}), 404
+
+    return jsonify({"message": "Goal completion updated"}), 200
