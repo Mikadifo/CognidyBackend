@@ -31,7 +31,7 @@ def signup():
 
     access_token = create_access_token(identity=username)
 
-    return jsonify({"message": "Signup successful!", "access_token": access_token}), 201
+    return jsonify({"message": "Signup successful!", "data": access_token}), 201
 
 
 # Login route
@@ -48,6 +48,6 @@ def login():
 
     if user and check_password_hash(user["password"], password):
         access_token = create_access_token(identity=user["username"])
-        return jsonify({"message": "Login successful", "access_token": access_token}), 200
+        return jsonify({"message": "Login successful", "data": access_token}), 200
     else:
         return jsonify({"message": "Invalid credentials"}), 401
