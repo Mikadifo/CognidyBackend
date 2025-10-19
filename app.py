@@ -1,25 +1,44 @@
-from flask import Flask
-from database import get_db, get_thesaurus_collection, get_users_collection
-from flask import jsonify
+from datetime import timedelta
+from flask import Flask, Response, request
 from flask import Blueprint, Flask
+from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
+from config.env_config import get_env_config
+from routes.users import users_bp
+from routes.notes import notes_bp
+from routes.roadmap_goals import roadmap_bp
+from flask_jwt_extended import JWTManager
+
+env = get_env_config()
 
 app = Flask(__name__)
 
+app.config["JWT_SECRET_KEY"] = env.JWT_SECRET_KEY
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=15)
+
+jwt = JWTManager(app)
+CORS(
+    app,
+    origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app"],
+    supports_credentials=True,
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
+
+@app.before_request
+def handle_options():
+    if request.method == 'OPTIONS':
+        return Response(status=200)
+
 # Get database instance (connection handled in database.py)
-db = get_db()
 api_bp = Blueprint("api", __name__)
 
 
-SWAGGER_URL = "/docs"
+SWAGGER_URL = "/api/v1/docs"
 API_URL = "/static/swagger.json"
 
 swaggerui_blueprint = get_swaggerui_blueprint(
     SWAGGER_URL, API_URL, config={"app_name": "Cognidy API"}
 )
-
-app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
-app.register_blueprint(api_bp, url_prefix="/api")
 
 
 @api_bp.route("/", methods=["GET"])
@@ -27,15 +46,12 @@ def home():
     return "Hello!"
 
 
-# TODO: remove this, just testing
-@app.route("/users", methods=["GET"])
-def get_test_user():
-    user = get_users_collection().find_one()
-    if not user:
-        return jsonify({"error": "No user found"}), 404
-    user["_id"] = str(user["_id"])
-    return jsonify(user), 200
-
+# Register blueprints
+app.register_blueprint(api_bp, url_prefix="/api")
+app.register_blueprint(users_bp, url_prefix="/api/users")
+app.register_blueprint(notes_bp, url_prefix="/api/notes")
+app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap_goals")
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=8000)
