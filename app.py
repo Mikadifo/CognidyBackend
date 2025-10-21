@@ -8,6 +8,7 @@ from routes.users import users_bp
 from routes.notes import notes_bp
 from routes.roadmap_goals import roadmap_bp
 from flask_jwt_extended import JWTManager
+from puzzles_service import generate_user_puzzles
 
 env = get_env_config()
 
@@ -63,4 +64,5 @@ if __name__ == "__main__":
 # Note: need to implement t
 @app.route('/puzzles', methods=['GET'])
 def get_puzzles():
-    return 
+    data = generate_user_puzzles()
+    return data
