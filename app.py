@@ -45,6 +45,10 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 def home():
     return "Hello!"
 
+@app.route('/')
+def home_default():
+    return "Hello, World!"
+
 
 # Register blueprints
 app.register_blueprint(api_bp, url_prefix="/api")
@@ -55,3 +59,8 @@ app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8000)
+
+# Note: need to implement t
+@app.route('/puzzles', methods=['GET'])
+def get_puzzles():
+    return 
