@@ -29,7 +29,7 @@ def home():
 
 # TODO: remove this, just testing
 @app.route("/users", methods=["GET"])
-def get_test_user():
+def get_test_user_notes():
     user = get_users_collection().find_one()
     if not user:
         return jsonify({"error": "No user found"}), 404

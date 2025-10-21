@@ -30,12 +30,15 @@ client = MongoClient(uri)
 db = client[DB_NAME]
 
 # retrieval and assertion of collection names from environment variables
-t_collection = os.getenv("T_COL")
-assert (
-    t_collection is not None and len(t_collection) > 0
-), "T_COL environment variable does not exist, or is empty"
+t_collection = "T_COL"
 
-userCollection = db["users"]
+U_COL = os.getenv("U_COL")
+assert (
+    U_COL is not None and len(U_COL) > 0
+), "U_COL environment variable does not exist, or is empty"
+
+# creation of collections after assertions
+userCollection = db[U_COL]
 thesaurusCollection = db[t_collection]
 
 
