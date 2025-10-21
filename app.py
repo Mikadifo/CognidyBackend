@@ -46,24 +46,12 @@ def home():
     return "Hello!"
 
 
-<<<<<<< HEAD
-# TODO: remove this, just testing
-@app.route("/users", methods=["GET"])
-def get_test_user_notes():
-    user = get_users_collection().find_one()
-    if not user:
-        return jsonify({"error": "No user found"}), 404
-    user["_id"] = str(user["_id"])
-    return jsonify(user), 200
-
-=======
 # Register blueprints
 app.register_blueprint(api_bp, url_prefix="/api")
 app.register_blueprint(users_bp, url_prefix="/api/users")
 app.register_blueprint(notes_bp, url_prefix="/api/notes")
 app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap_goals")
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
->>>>>>> 61bc9f71bceefed6340925909a886d84998c42c1
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8000)
