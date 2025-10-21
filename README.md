@@ -19,6 +19,7 @@ It follows a **branch-based workflow** to keep development organized and easy to
 ## 🌱 Development Workflow
 
 - Every task must be developed in a **new branch** based off the `dev` branch, based on naming conventions:
+
   - Features → `feature/<name>`  
     Example: `feature/user-authentication`
 
@@ -28,6 +29,7 @@ It follows a **branch-based workflow** to keep development organized and easy to
   - Custom tasks can adapt the format if needed.
 
 - Once a task is **completed**, create a **Pull Request (PR)**.
+
   - The rest of the team will **test it before merging** into `dev`.
 
 - Once all tasks of the week are completed, we will merge into `master`.

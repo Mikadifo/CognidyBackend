@@ -1,8 +1,16 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Cognidy API",
+    "title": "Cognidy Backend API",
     "version": "1.0.0"
+  },
+  "securityDefinitions": {
+    "Bearer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token} "
+    }
   },
   "basePath": "/api",
   "paths": {
@@ -15,6 +23,254 @@
           }
         }
       }
+    },
+    "/users/signup": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "User signup",
+        "description": "Register a new user with username, email, and password.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "User signup data",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "username": { "type": "string" },
+                "email": { "type": "string" },
+                "password": { "type": "string" }
+              },
+              "required": ["username", "email", "password"]
+            }
+          }
+        ],
+        "responses": {
+          "201": { "description": "Signup successful" },
+          "400": { "description": "Invalid input or username exists" }
+        }
+      }
+    },
+    "/users/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "User login",
+        "description": "Login with username and password.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "User login data",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "username": { "type": "string" },
+                "password": { "type": "string" }
+              },
+              "required": ["username", "password"]
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Login successful" },
+          "401": { "description": "Invalid credentials" },
+          "400": { "description": "Missing fields" }
+        }
+      }
+    },
+    "/notes/": {
+      "get": {
+        "tags": ["Notes"],
+        "summary": "Get all user notes",
+        "description": "Find all user notes from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Notes Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
+    },
+    "/notes/upload/auth": {
+      "post": {
+        "tags": ["Notes"],
+        "summary": "Generate content for authenticated users",
+        "description": "Generate and save flashcards, puzzles and roadmap goals from an uploaded file to MongoDB",
+        "consumes": ["multipart/form-data"],
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "formData",
+            "name": "file",
+            "type": "file",
+            "required": true,
+            "description": "User notes file"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Content Generated Successfully" },
+          "400": { "description": "Missing or invalid file" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
+    },
+    "/notes/upload/guest": {
+      "post": {
+        "tags": ["Notes"],
+        "summary": "Generate content for guest users",
+        "description": "Generate and return flashcards and puzzles from an uploaded file",
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {
+            "in": "formData",
+            "name": "file",
+            "type": "file",
+            "required": true,
+            "description": "User notes file"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Content Generated Successfully" },
+          "400": { "description": "Missing or invalid file" }
+        }
+      }
+    },
+    "/notes/delete/{note_id}": {
+      "delete": {
+        "tags": ["Notes"],
+        "summary": "Deletes user note",
+        "description": "Deletes a user note using the given note object id",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "type": "string",
+            "required": true,
+            "description": "User note object id"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Note deleted" },
+          "400": { "description": "Missing or invalid file" },
+          "404": { "description": "User/Note not found" }
+        }
+      }
+    },
+    "/roadmap_goals/": {
+      "get": {
+        "tags": ["Roadmap"],
+        "summary": "Get all user roadmap goals",
+        "description": "Find all roadmap goals linked to the user from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Roadmap Goals Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
+    },
+    "/roadmap_goals/new": {
+      "post": {
+        "tags": ["Roadmap"],
+        "summary": "Create a new custom roadmap goal",
+        "description": "Adds a new goal and rearranges goals based on order",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "User custom goal",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "order": { "type": "integer" },
+                "title": { "type": "string" },
+                "brief": { "type": "string" }
+              },
+              "required": ["order", "title", "brief"]
+            }
+          }
+        ],
+        "responses": {
+          "201": { "description": "User Roadmap Goal Created Successfully" },
+          "400": { "description": "Missing or invalid fields" },
+          "401": { "description": "Missing or invalid token" },
+          "409": { "description": "User can only have up to 20 goals" }
+        }
+      }
+    },
+    "/roadmap_goals/delete/{goal_order}": {
+      "delete": {
+        "tags": ["Roadmap"],
+        "summary": "Deletes user goal",
+        "description": "Deletes a user goal using the given goal order",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "goal_order",
+            "type": "integer",
+            "required": true,
+            "description": "User goal order"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Goal deleted" },
+          "400": { "description": "Missing or invalid fields" },
+          "404": { "description": "User/Goal not found" }
+        }
+      }
+    },
+    "/roadmap_goals/complete/{goal_order}": {
+      "put": {
+        "tags": ["Roadmap"],
+        "summary": "Updates user goal completion",
+        "description": "Marks user goal as completed or not based on the given boolean",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "goal_order",
+            "type": "integer",
+            "required": true,
+            "description": "User goal order"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Goal completion boolean",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "completed": { "type": "boolean" }
+              },
+              "required": ["completed"]
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Goal completion updated" },
+          "400": { "description": "Missing or invalid fields" },
+          "404": { "description": "User/Goal not found" }
+        }
+      }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "User authentication and persistance"
+    },
+    {
+      "name": "Notes",
+      "description": "User file notes"
+    },
+    {
+      "name": "Roadmap",
+      "description": "Roadmap Goals"
+    }
+  ]
 }
