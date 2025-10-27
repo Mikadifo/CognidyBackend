@@ -6,6 +6,7 @@ from constants.roadmap_prompt import get_roadmap_prompt
 from controllers.goals_controller import create_user_goal, delete_user_goal_by_id
 from database import get_roadmap_goals_collection
 from utils.gemini_utils import parse_model_output
+from utils.notes_utils import remove_tmp_file
 
 env = get_env_config()
 genai_client = genai.Client(api_key=env.GENAI_API_KEY)
@@ -40,6 +41,8 @@ def generate_roadmap_goals(file, user_id, file_id):
     try:
         if genai_file.name is not None:
             genai_client.files.delete(name=genai_file.name)
+
+        remove_tmp_file(file)
     except Exception as error:
         print(f"[W] failed to delete file {error}")
 
