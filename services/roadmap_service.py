@@ -4,9 +4,10 @@ from google import genai
 from config.env_config import get_env_config
 from constants.roadmap_prompt import get_roadmap_prompt
 from controllers.goals_controller import create_user_goal, delete_user_goal_by_id
-from database import get_roadmap_goals_collection
+from database import get_roadmap_goals_collection, get_users_collection
+from services.notes_service import update_note_status
 from utils.gemini_utils import parse_model_output
-from utils.notes_utils import remove_tmp_file
+from utils.notes_utils import remove_tmp_file, save_tmp_file
 
 env = get_env_config()
 genai_client = genai.Client(api_key=env.GENAI_API_KEY)
@@ -41,8 +42,6 @@ def generate_roadmap_goals(file, user_id, file_id):
     try:
         if genai_file.name is not None:
             genai_client.files.delete(name=genai_file.name)
-
-        remove_tmp_file(file)
     except Exception as error:
         print(f"[W] failed to delete file {error}")
 
@@ -67,3 +66,16 @@ def save_to_DB(response, file_id, user_id):
 
         if "_id" in goal:
             delete_user_goal_by_id(goal["_id"], user_id)
+
+def generate_roadmap_goals_background(file, user_id, file_id):
+    try:
+        tmp_file = save_tmp_file(file)
+
+        success, msg = generate_roadmap_goals(tmp_file, user_id, file_id)
+        print(msg)
+        update_note_status(user_id, file_id, "goals", "done" if success else "failed")
+
+        remove_tmp_file(tmp_file)
+    except Exception as e:
+        print(f"[E] Goal generation failes: {e}")
+        update_note_status(user_id, file_id, "goals", "failed")

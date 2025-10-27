@@ -1,11 +1,11 @@
+from threading import Thread
 from datetime import datetime, timezone
 import hashlib
 from bson import ObjectId
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from database import get_users_collection
 from flask import Blueprint, jsonify, request
-from services.roadmap_service import generate_roadmap_goals
-from utils.notes_utils import save_tmp_file
+from services.roadmap_service import generate_roadmap_goals, generate_roadmap_goals_background
 
 MAX_UPLOADS = 5
 notes_bp = Blueprint("notes", __name__)
@@ -75,25 +75,24 @@ def upload_auth():
             "_id": ObjectId(),
             "filename": file.filename,
             "hash": file_hash,
-            "created_at": datetime.now(timezone.utc)
+            "created_at": datetime.now(timezone.utc),
+            "status": {
+                "flashcards": "generating",
+                "puzzles": "generating",
+                "goals": "generating"
+            }
     }
 
-    errors = []
-
-    tmp_file = save_tmp_file(file)
     # TODO: Call 3 MVPS here for generation
-    _, goals_error = generate_roadmap_goals(tmp_file, str(user["_id"]), str(note["_id"]))
+    Thread(target=generate_roadmap_goals_background, args=(file, str(user["_id"]), str(note["_id"]))).start()
     # TODO: call generate flashcards
     # TODO: call generate puzzles
-
-    if len(goals_error) > 0:
-        errors.append(goals_error)
 
     get_users_collection().find_one_and_update({"username": username}, {"$push": {"notes": note}})
 
     note["_id"] = str(note["_id"])
 
-    return jsonify({"message": "File uploaded successfully", "data": note, "error": ', '.join(errors)}), 201
+    return jsonify({"message": "File uploaded successfully", "data": note }), 202
 
 @notes_bp.route("/delete/<note_id>", methods=["DELETE"])
 @jwt_required()
