@@ -92,6 +92,27 @@
         }
       }
     },
+    "/notes/status/{note_id}": {
+      "get": {
+        "tags": ["Notes"],
+        "summary": "Get user note generation status",
+        "description": "Return user note content generation status",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "type": "string",
+            "required": true,
+            "description": "User note object id"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Note status fetched" },
+          "404": { "description": "User/Note not found" }
+        }
+      }
+    },
     "/notes/upload/auth": {
       "post": {
         "tags": ["Notes"],

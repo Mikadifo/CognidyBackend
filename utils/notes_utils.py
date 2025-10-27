@@ -1,12 +1,11 @@
 import os
-import uuid
 import tempfile
 
 def save_tmp_file(file):
     ext = os.path.splitext(file.filename)[1]
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-        file.save(f"{str(uuid.uuid4())}_{tmp.name}")
+        file.save(tmp.name)
 
         return tmp.name
 

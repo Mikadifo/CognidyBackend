@@ -5,7 +5,8 @@ from bson import ObjectId
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from database import get_users_collection
 from flask import Blueprint, jsonify, request
-from services.roadmap_service import generate_roadmap_goals, generate_roadmap_goals_background
+from services.roadmap_service import generate_roadmap_goals_background
+from utils.notes_utils import save_tmp_file
 
 MAX_UPLOADS = 5
 notes_bp = Blueprint("notes", __name__)
@@ -83,8 +84,9 @@ def upload_auth():
             }
     }
 
-    # TODO: Call 3 MVPS here for generation
-    Thread(target=generate_roadmap_goals_background, args=(file, str(user["_id"]), str(note["_id"]))).start()
+    # TODO: Call 3 MVPS here for generation, save 3 tmp files
+    goals_file = save_tmp_file(file)
+    Thread(target=generate_roadmap_goals_background, args=(goals_file, str(user["_id"]), str(note["_id"]))).start()
     # TODO: call generate flashcards
     # TODO: call generate puzzles
 
@@ -114,4 +116,34 @@ def delete_note(note_id):
         return jsonify({"error": "Note not found for this user"}), 404
 
     return jsonify({"message": "Note was deleted"}), 200
+
+
+@notes_bp.route("/status/<note_id>", methods=["GET"])
+@jwt_required()
+def get_note_status(note_id):
+    username = get_jwt_identity()
+
+    user = get_users_collection().find_one({"username": username})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        note_oid = ObjectId(note_id)
+    except Exception:
+        return jsonify({"error": "Invalid note ID"}), 400
+
+    if "notes" not in user or len(user["notes"]) <= 0:
+        return jsonify({"message": "User does not have uploaded notes"}), 404
+    
+    notes = user["notes"]
+    user_note = {}
+
+    for note in notes:
+        if note["_id"] == note_oid:
+            user_note = note
+
+    if not user_note:
+        return jsonify({"message": "User note not found"}), 404
+
+    return jsonify({"message": "Login successful", "data": user_note["status"]}), 200
 
