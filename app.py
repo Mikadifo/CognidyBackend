@@ -8,6 +8,7 @@ from routes.users import users_bp
 from routes.notes import notes_bp
 from routes.roadmap_goals import roadmap_bp
 from flask_jwt_extended import JWTManager
+from puzzles_service import generate_user_puzzles
 
 env = get_env_config()
 
@@ -45,6 +46,10 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 def home():
     return "Hello!"
 
+@app.route('/')
+def home_default():
+    return "Hello, World!"
+
 
 # Register blueprints
 app.register_blueprint(api_bp, url_prefix="/api")
@@ -54,4 +59,4 @@ app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap_goals")
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=8000)
+    app.run(host="0.0.0.0", port=8000)

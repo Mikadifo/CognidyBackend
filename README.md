@@ -49,25 +49,35 @@ It follows a **branch-based workflow** to keep development organized and easy to
    venv\Scripts\activate
    ```
 
-2. **Start the Flask server**:
+2. **Install dependencies**: 
 
-   ```bash
-   python app.py
-   ```
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-   or if using Flask CLI:
+3. **Add env variables:** (Ask a teammate for this)
+
+    ```
+    DB_USERNAME=<username>
+    DB_PASSWORD=<password>
+    DB_NAME=cognidy
+    JWT_SECRET_KEY=<jwt_secret_key>
+    GENAI_API_KEY=<genai_api_key>
+    ```
+
+4. **Start the Flask server**:
 
    ```bash
    flask run
    ```
 
-3. **Access the API locally**:
+5. **Access the API locally**:
 
    ```
    http://localhost:5000/
    ```
 
-4. **Check API documentation (Swagger)**:
+6. **Check API documentation (Swagger)**:
    ```
    http://localhost:5000/swagger
    ```
@@ -158,7 +168,6 @@ You need a `.env` file at the root of the project with the following values:
 DB_USERNAME=<db_username>
 DB_PASSWORD=<db_password>
 DB_NAME=<db_name>
-T_COL=<t_col>
 ```
 
 ⚠️ Ask a team member for the actual values or retrieve them from GitHub Secrets.

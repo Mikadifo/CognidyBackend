@@ -2,11 +2,22 @@ import wn
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from collections import defaultdict
+<<<<<<< HEAD
+from database import get_db
+=======
+>>>>>>> 61bc9f71bceefed6340925909a886d84998c42c1
 import os
 
 # Load environment variables from .env file
 load_dotenv()
 
+<<<<<<< HEAD
+# setting up database connection from database.py
+db = get_db()
+
+# retrieval and assertion of thesaurusCollection name from environment variables
+t_collection = "T_COL"
+=======
 # setting up database connection, assertion of environment variables to ensure the database can be accessed
 DB_USERNAME = os.getenv("DB_USERNAME")
 assert (
@@ -31,6 +42,7 @@ db = client[DB_NAME]
 
 # retrieval and assertion of thesaurusCollection name from environment variables
 t_collection = os.getenv("T_COL")
+>>>>>>> 61bc9f71bceefed6340925909a886d84998c42c1
 assert (
     t_collection is not None and len(t_collection) > 0
 ), "T_COL environment variable does not exist, or is empty"
