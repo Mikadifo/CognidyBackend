@@ -73,8 +73,9 @@ def generate_user_puzzles(file, user_id):
             # Create puzzle document
             puzzle_document = {
                 "user_id": user_id,
+                "puzzle_id": user_id + "_" + str(int(datetime.now().timestamp() * 1000)),
                 "puzzle_data": puzzle_data,
-                "created_at": datetime.utcnow(),
+                "created_at": str(datetime.now()),
                 "completed": False,
                 "completion_time": None
             }
