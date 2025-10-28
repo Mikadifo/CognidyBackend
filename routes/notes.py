@@ -78,7 +78,7 @@ def upload_auth():
             "hash": file_hash,
             "created_at": datetime.now(timezone.utc),
             "status": {
-                "flashcards": "generating", # TODO: set to generating once service is implemented
+                "flashcards": "done", # TODO: set to generating once service is implemented
                 "puzzles": "done", # TODO: set to generating once service is implemented
                 "goals": "generating"
             }

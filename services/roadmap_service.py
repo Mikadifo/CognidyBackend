@@ -1,5 +1,6 @@
 import json
 import copy
+import time
 from google import genai
 from config.env_config import get_env_config
 from constants.roadmap_prompt import get_roadmap_prompt
@@ -73,6 +74,7 @@ def generate_roadmap_goals_background(file_bytes, file_ext, user_id, file_id):
     try:
         goals_file = save_tmp_file(file_bytes, file_ext)
         success, msg = generate_roadmap_goals(goals_file, user_id, file_id)
+        # success, msg = test()
         print(msg)
         update_note_status(user_id, file_id, "goals", "done" if success else "failed")
     except Exception as e:
@@ -81,3 +83,6 @@ def generate_roadmap_goals_background(file_bytes, file_ext, user_id, file_id):
     else:
         remove_tmp_file(goals_file)
 
+def test():
+    time.sleep(8)
+    return True, "completed testing...."
