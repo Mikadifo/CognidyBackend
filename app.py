@@ -9,9 +9,8 @@ from routes.notes import notes_bp
 from routes.roadmap_goals import roadmap_bp
 from flask_jwt_extended import JWTManager
 
-env = get_env_config()
-
 app = Flask(__name__)
+env = get_env_config()
 
 app.config["JWT_SECRET_KEY"] = env.JWT_SECRET_KEY
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=15)
