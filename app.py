@@ -59,10 +59,4 @@ app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap_goals")
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=8000)
-
-# Note: need to implement t
-@app.route('/puzzles', methods=['GET'])
-def get_puzzles():
-    data = generate_user_puzzles()
-    return data
+    app.run(host="0.0.0.0", port=8000)
