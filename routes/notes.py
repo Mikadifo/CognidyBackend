@@ -1,3 +1,4 @@
+import os
 from threading import Thread
 from datetime import datetime, timezone
 import hashlib
@@ -6,7 +7,6 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from database import get_users_collection
 from flask import Blueprint, jsonify, request
 from services.roadmap_service import generate_roadmap_goals_background
-from utils.notes_utils import save_tmp_file
 
 MAX_UPLOADS = 5
 notes_bp = Blueprint("notes", __name__)
@@ -78,15 +78,17 @@ def upload_auth():
             "hash": file_hash,
             "created_at": datetime.now(timezone.utc),
             "status": {
-                "flashcards": "generating",
-                "puzzles": "generating",
+                "flashcards": "generating", # TODO: set to generating once service is implemented
+                "puzzles": "done", # TODO: set to generating once service is implemented
                 "goals": "generating"
             }
     }
 
-    # TODO: Call 3 MVPS here for generation, save 3 tmp files
-    goals_file = save_tmp_file(file)
-    Thread(target=generate_roadmap_goals_background, args=(goals_file, str(user["_id"]), str(note["_id"]))).start()
+    # TODO: Call 3 MVPS Threads here for generation
+    file_bytes = file.read()
+    file_ext = os.path.splitext(str(file.filename))[1]
+    goals_thread = Thread(target=generate_roadmap_goals_background, args=(file_bytes, file_ext, str(user["_id"]), str(note["_id"])))
+    goals_thread.start()
     # TODO: call generate flashcards
     # TODO: call generate puzzles
 

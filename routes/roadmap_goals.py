@@ -42,7 +42,12 @@ def create_goal():
         if goals_size >= MAX_GOALS:
             return jsonify({"error": f"You can only have up to {MAX_GOALS} goals"}), 409
 
-        return create_user_goal(str(user["_id"]), new_goal, None)
+        created = create_user_goal(str(user["_id"]), new_goal, None)
+
+        if created:
+            return jsonify({"message": "Roadmap Goal created successfully"}), 201
+        else:
+            return jsonify({"error": "Error while saving goal"}), 500
     except ValidationError as error:
         first_error = error.errors()[0]
         return jsonify({"error": first_error.get("msg")}), 400
@@ -61,7 +66,12 @@ def delete_goal(goal_order):
     if not goal_to_delete:
         return jsonify({"error": "Goal does not exists for this user"}), 404
 
-    return delete_user_goal(goal_to_delete, str(user["_id"]))
+    success, msg = delete_user_goal(goal_to_delete, str(user["_id"]))
+
+    if success:
+        return jsonify({"message": msg}), 200
+    else:
+        return jsonify({"error": msg}), 404
 
 @roadmap_bp.route("/complete/<int:goal_order>", methods=["PUT"])
 @jwt_required()
