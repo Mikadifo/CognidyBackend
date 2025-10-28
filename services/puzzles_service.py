@@ -1,10 +1,15 @@
 from google import genai
 from config.env_config import get_env_config
+from database import get_puzzles_collection
+from constants.collections import Collection
+import json
+from datetime import datetime
+
 
 env = get_env_config()
 genai_client = genai.Client(api_key=env.GENAI_API_KEY)
 
-def generate_user_puzzles(file):
+def generate_user_puzzles(file, user_id):
     try:
         genai_file = genai_client.files.upload(file=file)
 
@@ -17,7 +22,7 @@ def generate_user_puzzles(file):
         3. Use null for empty cells, letters for filled cells, and numbers for word starts
         4. Ensure words intersect logically
         
-        Return JSON with this exact structure:
+        Return ONLY valid JSON with this exact structure:
         {
           "metadata": {
             "title": "Generated from [filename]",
@@ -26,10 +31,7 @@ def generate_user_puzzles(file):
             "totalWords": [number]
           },
           "grid": [
-            // 15x15 array where:
-            // null = empty cell
-            // "1", "2", etc = numbered start cells with letters
-            // "A", "B", etc = letter cells
+            // 15x15 array where null = empty cell, letters for filled cells
           ],
           "words": [
             {
@@ -47,93 +49,7 @@ def generate_user_puzzles(file):
             "down": [{"number": 2, "hint": "..."}]
           }
         }
-        
-        Important:
-        - Words must come from the uploaded file content
-        - Hints should be definitions or contextual clues from the file
-        - If definitions aren't explicit, infer from context
-        - Ensure proper word intersections
-        - Number cells should contain both the number AND the first letter
-        "Here is an example of the expected JSON format for clarity: [provide a small example here]"
-        "{
-  "metadata": {
-    "title": "Sample Crossword",
-    "difficulty": "medium",
-    "gridSize": {
-      "rows": 15,
-      "cols": 15
-    },
-    "totalWords": 12
-  },
-  "grid": [
-    [null, null, null, "1", "H", "E", "L", "L", "O", null, null, null, null, null, null],
-    [null, null, null, null, "U", null, null, null, null, null, null, null, null, null, null],
-    [null, "2", "W", "O", "R", "L", "D", null, null, null, null, null, null, null, null],
-    [null, null, null, null, "E", null, null, null, null, null, null, null, null, null, null],
-    [null, null, null, null, "3", "P", "Y", "T", "H", "O", "N", null, null, null, null]
-  ],
-  "words": [
-    {
-      "number": 1,
-      "word": "HELLO",
-      "direction": "across",
-      "startRow": 0,
-      "startCol": 3,
-      "length": 5,
-      "hint": "A greeting"
-    },
-    {
-      "number": 2,
-      "word": "WORLD",
-      "direction": "across", 
-      "startRow": 2,
-      "startCol": 1,
-      "length": 5,
-      "hint": "Planet Earth"
-    },
-    {
-      "number": 1,
-      "word": "HUE",
-      "direction": "down",
-      "startRow": 0,
-      "startCol": 3,
-      "length": 3,
-      "hint": "Color shade"
-    },
-    {
-      "number": 3,
-      "word": "PYTHON",
-      "direction": "across",
-      "startRow": 4,
-      "startCol": 4,
-      "length": 6,
-      "hint": "Programming language"
-    }
-  ],
-  "hints": {
-    "across": [
-      {
-        "number": 1,
-        "hint": "A greeting"
-      },
-      {
-        "number": 2, 
-        "hint": "Planet Earth"
-      },
-      {
-        "number": 3,
-        "hint": "Programming language"
-      }
-    ],
-    "down": [
-      {
-        "number": 1,
-        "hint": "Color shade"
-      }
-    ]
-  }
-}" """
-
+        """
         
         response = genai_client.models.generate_content(
             model="gemini-1.5-flash",
@@ -143,10 +59,36 @@ def generate_user_puzzles(file):
         if genai_file.name is not None:
             genai_client.files.delete(name=genai_file.name)
 
-        # TODO: save to DB
+        # Parse the AI response
+        try:
+            puzzle_data = json.loads(response.text)
+        except json.JSONDecodeError:
+            print("Failed to parse AI response as JSON")
+            return None
 
-
-        return [] # TODO: return generated array here
+        # Save to database if user_id provided
+        if user_id is not None:
+            puzzles_collection = get_puzzles_collection()
+            
+            # Create puzzle document
+            puzzle_document = {
+                "user_id": user_id,
+                "puzzle_data": puzzle_data,
+                "created_at": datetime.utcnow(),
+                "completed": False,
+                "completion_time": None
+            }
+            
+            # Insert into database
+            result = puzzles_collection.insert_one(puzzle_document)
+            puzzle_document["_id"] = str(result.inserted_id)
+            
+            return puzzle_document
+        
+        return puzzle_data
+        
     except Exception as error:
-        # TODO; handle errors
+        print(f"Error generating puzzles: {error}")
+        if 'genai_file' in locals() and genai_file.name:
+            genai_client.files.delete(name=genai_file.name)
         return None

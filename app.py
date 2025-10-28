@@ -8,7 +8,7 @@ from routes.users import users_bp
 from routes.notes import notes_bp
 from routes.roadmap_goals import roadmap_bp
 from flask_jwt_extended import JWTManager
-from puzzles_service import generate_user_puzzles
+from routes.puzzles import puzzles_bp
 
 env = get_env_config()
 
@@ -57,12 +57,9 @@ app.register_blueprint(users_bp, url_prefix="/api/users")
 app.register_blueprint(notes_bp, url_prefix="/api/notes")
 app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap_goals")
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+app.register_blueprint(puzzles_bp, url_prefix="/api/puzzles")
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8000)
 
 # Note: need to implement t
-@app.route('/puzzles', methods=['GET'])
-def get_puzzles():
-    data = generate_user_puzzles()
-    return data
