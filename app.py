@@ -8,7 +8,7 @@ from routes.users import users_bp
 from routes.notes import notes_bp
 from routes.roadmap_goals import roadmap_bp
 from flask_jwt_extended import JWTManager
-from routes.puzzles import puzzles_bp
+from routes.user_puzzles import puzzles_bp
 
 app = Flask(__name__)
 env = get_env_config()
