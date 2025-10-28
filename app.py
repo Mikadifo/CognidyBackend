@@ -44,6 +44,10 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 def home():
     return "Hello!"
 
+@app.route('/')
+def home_default():
+    return "Hello, World!"
+
 
 # Register blueprints
 app.register_blueprint(api_bp, url_prefix="/api")
