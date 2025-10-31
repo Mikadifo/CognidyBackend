@@ -10,8 +10,9 @@ from routes.roadmap_goals import roadmap_bp
 from flask_jwt_extended import JWTManager
 from routes.user_puzzles import puzzles_bp
 
-app = Flask(__name__)
 env = get_env_config()
+
+app = Flask(__name__)
 
 app.config["JWT_SECRET_KEY"] = env.JWT_SECRET_KEY
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=15)
@@ -56,6 +57,7 @@ app.register_blueprint(users_bp, url_prefix="/api/users")
 app.register_blueprint(notes_bp, url_prefix="/api/notes")
 app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap_goals")
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+app.register_blueprint(puzzles_bp, url_prefix="/api/puzzles")
 app.register_blueprint(puzzles_bp, url_prefix="/api/puzzles")
 
 if __name__ == "__main__":
