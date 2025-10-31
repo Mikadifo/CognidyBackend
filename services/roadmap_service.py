@@ -84,5 +84,5 @@ def generate_roadmap_goals_background(file_bytes, file_ext, user_id, file_id):
         remove_tmp_file(goals_file)
 
 def test():
-    time.sleep(8)
+    time.sleep(12)
     return True, "completed testing...."

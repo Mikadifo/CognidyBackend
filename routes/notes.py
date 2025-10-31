@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 import hashlib
 from bson import ObjectId
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from database import get_users_collection
+from controllers.goals_controller import delete_user_goal, delete_user_goal_by_id
+from database import get_roadmap_goals_collection, get_users_collection
 from flask import Blueprint, jsonify, request
 from services.roadmap_service import generate_roadmap_goals_background
 
@@ -114,6 +115,13 @@ def delete_note(note_id):
 
     result = get_users_collection().update_one({"username": username}, {"$pull": {"notes": {"_id": note_oid}}})
 
+    goals = get_roadmap_goals_collection().find({"note_id": note_id})
+    goals = goals.to_list()
+
+    for goal in goals:
+        if goal["note_id"] == note_id:
+            delete_user_goal(goal, str(user["_id"]))
+
     if result.modified_count == 0:
         return jsonify({"error": "Note not found for this user"}), 404
 
@@ -147,5 +155,5 @@ def get_note_status(note_id):
     if not user_note:
         return jsonify({"message": "User note not found"}), 404
 
-    return jsonify({"message": "Login successful", "data": user_note["status"]}), 200
+    return jsonify({"message": "Fetched status successfully", "data": user_note["status"]}), 200
 
