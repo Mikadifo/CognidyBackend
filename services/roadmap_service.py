@@ -21,6 +21,7 @@ def get_previous_goals(user_id):
 
 def generate_roadmap_goals(file, user_id, file_id):
     previous_goals = get_previous_goals(user_id)
+    print("Previous goals: ", previous_goals)
     prompt = get_roadmap_prompt(previous_goals)
 
     try:
@@ -30,7 +31,15 @@ def generate_roadmap_goals(file, user_id, file_id):
         return False, "[E] failed to upload file to gemini"
 
     try:
-        contents = [genai.types.Content(role="user", parts=[genai.types.Part(text=prompt)])]
+        contents = [
+                genai.types.Content(
+                    role="user",
+                    parts=[
+                        genai.types.Part(text=prompt),
+                        genai.types.Part(file_data=genai.types.FileData(file_uri=genai_file.uri))
+                    ]
+                )
+        ]
 
         response = genai_client.models.generate_content(
                 model="gemini-2.5-flash",

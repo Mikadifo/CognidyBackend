@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 
-MAX_GOALS = 20
+MAX_GOALS = 15
 
 class RoadmapGoal(BaseModel):
     order: int = Field(..., ge=1, le=MAX_GOALS)

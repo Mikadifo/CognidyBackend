@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import hashlib
 from bson import ObjectId
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from controllers.goals_controller import delete_user_goal, delete_user_goal_by_id
+from controllers.goals_controller import delete_user_goal
 from database import get_roadmap_goals_collection, get_users_collection
 from flask import Blueprint, jsonify, request
 from services.roadmap_service import generate_roadmap_goals_background
@@ -116,6 +116,7 @@ def delete_note(note_id):
     result = get_users_collection().update_one({"username": username}, {"$pull": {"notes": {"_id": note_oid}}})
 
     goals = get_roadmap_goals_collection().find({"note_id": note_id})
+    goals.sort("order", -1)
     goals = goals.to_list()
 
     for goal in goals:
