@@ -7,6 +7,7 @@ from config.env_config import get_env_config
 from routes.users import users_bp
 from routes.notes import notes_bp
 from routes.roadmap_goals import roadmap_bp
+from routes.backend_study import study_bp
 from flask_jwt_extended import JWTManager
 
 app = Flask(__name__)
@@ -55,6 +56,7 @@ app.register_blueprint(users_bp, url_prefix="/api/users")
 app.register_blueprint(notes_bp, url_prefix="/api/notes")
 app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap_goals")
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+app.register_blueprint(study_bp, url_prefix="/api/study")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
