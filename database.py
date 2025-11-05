@@ -14,7 +14,6 @@ client = MongoClient(uri)
 # creating database instance
 db = client[env.DB_NAME]
 
-
 def get_db():
     return db
 

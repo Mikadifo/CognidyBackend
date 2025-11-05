@@ -168,7 +168,6 @@ You need a `.env` file at the root of the project with the following values:
 DB_USERNAME=<db_username>
 DB_PASSWORD=<db_password>
 DB_NAME=<db_name>
-T_COL=<t_col>
 ```
 
 ⚠️ Ask a team member for the actual values or retrieve them from GitHub Secrets.

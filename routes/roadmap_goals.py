@@ -1,6 +1,6 @@
-from bson import ObjectId
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from pydantic import ValidationError
+from controllers.goals_controller import create_user_goal, delete_user_goal, get_user_goals_count
 from database import get_roadmap_goals_collection, get_users_collection
 from flask import Blueprint, jsonify, request
 
@@ -30,47 +30,26 @@ def create_goal():
         username = get_jwt_identity()
         data = request.get_json()
         goal = RoadmapGoal(**data)
+        new_goal = goal.model_dump()
         user = get_users_collection().find_one({"username": username}, {"user_id": 1})
 
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        goals = get_roadmap_goals_collection().find({"user_id": str(user["_id"])}, {"order": 1, "completed": 1})
-        goals.sort("order")
-        goals = goals.to_list()
-        goals_size = len(goals)
+        goals_size = get_user_goals_count(str(user["_id"]))
 
         if goals_size >= MAX_GOALS:
             return jsonify({"error": f"You can only have up to {MAX_GOALS} goals"}), 409
 
-        new_goal = goal.model_dump()
-        new_goal["_id"] = ObjectId()
-        new_goal["user_id"] = str(user["_id"])
+        created = create_user_goal(str(user["_id"]), new_goal, None)
 
-        if len(goals) == 0:
-            get_roadmap_goals_collection().insert_one(new_goal)
+        if created:
             return jsonify({"message": "Roadmap Goal created successfully"}), 201
-
-        new_order = new_goal["order"]
-
-        if new_order > goals[goals_size - 1]["order"] + 1:
-            new_goal["order"] = goals[goals_size - 1]["order"] + 1
-            get_roadmap_goals_collection().insert_one(new_goal)
-
-            return jsonify({"message": "Roadmap Goal created successfully"}), 201
-
-        new_goal["completed"] = goals[new_order - 1]["completed"]
-
-        get_roadmap_goals_collection().update_many(
-                {"user_id": str(user["_id"]), "order": {"$gte": new_goal["order"]}},
-                {"$inc": {"order": 1}}
-        )
-        get_roadmap_goals_collection().insert_one(new_goal)
-
-        return jsonify({"message": "Roadmap Goal created successfully"}), 201
+        else:
+            return jsonify({"error": "Error while saving goal"}), 500
     except ValidationError as error:
-        first_error = error.errors()[0]
-        return jsonify({"error": first_error.get("msg")}), 400
+        errors = {error["loc"][0]: error["msg"] for error in error.errors()}
+        return jsonify({"error": errors}), 400
 
 @roadmap_bp.route("/delete/<int:goal_order>", methods=["DELETE"])
 @jwt_required()
@@ -86,14 +65,12 @@ def delete_goal(goal_order):
     if not goal_to_delete:
         return jsonify({"error": "Goal does not exists for this user"}), 404
 
-    get_roadmap_goals_collection().update_many(
-            {"user_id": str(user["_id"]), "order": {"$gt": goal_to_delete["order"]}},
-            {"$inc": {"order": -1}}
-    )
+    success, msg = delete_user_goal(goal_to_delete, str(user["_id"]))
 
-    get_roadmap_goals_collection().delete_one({"_id": goal_to_delete["_id"], "user_id": str(user["_id"])})
-
-    return jsonify({"message": "Goal was deleted"}), 200
+    if success:
+        return jsonify({"message": msg}), 200
+    else:
+        return jsonify({"error": msg}), 404
 
 @roadmap_bp.route("/complete/<int:goal_order>", methods=["PUT"])
 @jwt_required()
