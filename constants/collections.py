@@ -7,6 +7,7 @@ class Collection(Enum):
     PUZZLES = "puzzles"
     ROADMAP_GOALS = "roadmap_goals"
     THESAURUS = "thesaurus"
+    QUIZZES = "quizzes"
 
     @classmethod
     def list(cls):
