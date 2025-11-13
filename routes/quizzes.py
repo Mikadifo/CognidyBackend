@@ -1,6 +1,7 @@
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from database import get_quizzes_collection, get_users_collection
 from flask import Blueprint, jsonify
+import random
 
 quizzes_bp = Blueprint("quizzes", __name__)
 
@@ -16,5 +17,7 @@ def get_goals():
     quizzes = get_quizzes_collection().find({"user_id": str(user["_id"])}, {"user_id": 0})
     quizzes.sort("order")
     quizzes = quizzes.to_list()
+
+    random.shuffle(quizzes)
 
     return jsonify({"message": "Quizzes retrieved successfully", "data": quizzes}), 200

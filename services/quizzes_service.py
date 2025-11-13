@@ -77,7 +77,7 @@ def save_to_DB(response, file_id, user_id):
                     {"$set": {
                         "question": quizz["question"],
                         "options": quizz["options"],
-                        "correct": quizz["correct"],
+                        "correct": quizz["options"][quizz["correct"]],
                         "note_id": file_id
                     }}
             )

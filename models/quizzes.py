@@ -6,7 +6,7 @@ MAX_QUIZZES = 15
 class RoadmapGoal(BaseModel):
     question: str = Field(..., description="Question")
     options: List[str] = Field(..., description="List of options")
-    correct: int = Field(..., description="Correct option index")
+    correct: str = Field(..., description="Correct option string")
 
     @field_validator("question",  mode="after")
     @classmethod
