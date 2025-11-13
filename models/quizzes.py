@@ -6,9 +6,9 @@ MAX_QUIZZES = 15
 class RoadmapGoal(BaseModel):
     question: str = Field(..., description="Question")
     options: List[str] = Field(..., description="List of options")
-    correct: str = Field(..., description="Correct option string")
+    correct: int = Field(..., description="Correct option index")
 
-    @field_validator("question", "correct", mode="after")
+    @field_validator("question",  mode="after")
     @classmethod
     def non_empty_strip(cls, value: str, info) -> str:
         value = value.strip()
