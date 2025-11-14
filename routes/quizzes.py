@@ -23,6 +23,7 @@ def get_quizzes():
 
     for quiz in quizzes:
         quiz["_id"] = str(quiz["_id"])
+        quiz["correct"] = quiz["options"][quiz["correct"]]
 
         if "note_id" in quiz:
             quiz["sourceFileName"] = user_notes.get(quiz["note_id"], None)
