@@ -290,6 +290,18 @@
           "401": { "description": "Missing or invalid token" }
         }
       }
+    },
+    "/sessions/": {
+      "get": {
+        "tags": ["Sessions"],
+        "summary": "Get all user sessions",
+        "description": "Find all sessions linked to the user from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Sessions Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
     }
   },
   "tags": [
@@ -308,6 +320,10 @@
     {
       "name": "Quizzes",
       "description": "Quizzes, Learning section"
+    },
+    {
+      "name": "Sessions",
+      "description": "Sessions, Progress section"
     }
   ]
 }
