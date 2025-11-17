@@ -278,6 +278,18 @@
           "404": { "description": "User/Goal not found" }
         }
       }
+    },
+    "/quizzes/": {
+      "get": {
+        "tags": ["Quizzes"],
+        "summary": "Get all user quizzes",
+        "description": "Find all quizzes linked to the user from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Quizzes Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
     }
   },
   "tags": [
@@ -292,6 +304,10 @@
     {
       "name": "Roadmap",
       "description": "Roadmap Goals"
+    },
+    {
+      "name": "Quizzes",
+      "description": "Quizzes, Learning section"
     }
   ]
 }
