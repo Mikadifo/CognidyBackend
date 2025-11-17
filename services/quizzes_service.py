@@ -93,13 +93,13 @@ def save_to_DB(response, file_id, user_id):
 def generate_quizzes_background(file_bytes, file_ext, user_id, file_id):
     try:
         quizzes_file = save_tmp_file(file_bytes, file_ext)
-        #success, msg = generate_quizzes(quizzes_file, user_id, file_id)
-        success, msg = test()
+        success, msg = generate_quizzes(quizzes_file, user_id, file_id)
+        #success, msg = test()
         print(msg)
         update_note_status(user_id, file_id, "quizzes", "done" if success else "failed")
     except Exception as e:
-        print(f"[E] Goal generation failed: {e}")
-        update_note_status(user_id, file_id, "goals", "failed")
+        print(f"[E] Quizz generation failed: {e}")
+        update_note_status(user_id, file_id, "quizzes", "failed")
     else:
         remove_tmp_file(quizzes_file)
 

@@ -82,7 +82,8 @@ def upload_auth():
             "status": {
                 "flashcards": "done", # TODO: set to generating once service is implemented
                 "puzzles": "done", # TODO: set to generating once service is implemented
-                "goals": "generating"
+                "goals": "generating",
+                "quizzes": "generating"
             }
     }
 
