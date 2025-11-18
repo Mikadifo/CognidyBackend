@@ -34,3 +34,6 @@ def get_roadmap_goals_collection():
 
 def get_quizzes_collection():
     return db[Collection.QUIZZES.value]
+
+def get_sessions_collection():
+    return db[Collection.SESSIONS.value]
