@@ -54,30 +54,80 @@ def login():
         return jsonify({"message": "Invalid credentials"}), 401
     
     
-    # Get current user info
+# Get current user info
 @users_bp.route("/me", methods=["GET"])
-@jwt_required()  # ensures user must send valid token
+@jwt_required()
 def get_current_user():
-    current_user = get_jwt_identity()
-    user = get_users_collection().find_one({"username": current_user})
+    current_username = get_jwt_identity()
+    user = get_users_collection().find_one({"username": current_username})
 
     if not user:
-        return jsonify({"message": "User not found"}), 404
+        return jsonify({"error": "User not found"}), 404
 
     return jsonify({
-        "username": user["username"],
-        "email": user["email"]
+        "data": {
+            "username": user["username"],
+            "email": user["email"]
+        }
     }), 200
+
+ 
+
 
 @users_bp.route("/update", methods=["PUT"])
 @jwt_required()
 def update_user():
-    current_user = get_jwt_identity()
+    current_username = get_jwt_identity()
     data = request.get_json()
-    username = data.get("username")
-    email = data.get("email")
+
+    new_username = data.get("username")
+    new_email = data.get("email")
 
     users = get_users_collection()
-    users.update_one({"username": current_user}, {"$set": {"username": username, "email": email}})
 
-    return jsonify({"message": "Profile updated successfully!"}), 200
+    # Update user info
+    users.update_one(
+        {"username": current_username},
+        {"$set": {"username": new_username, "email": new_email}}
+    )
+
+    # Issue new token so frontend stays in sync
+    new_token = create_access_token(identity=new_username)
+
+    return jsonify({
+        "message": "Profile updated successfully!",
+        "token": new_token
+    }), 200
+
+
+# Reset Password
+@users_bp.route("/reset_password", methods=["PUT"])
+@jwt_required()
+def reset_password():
+    current_username = get_jwt_identity()
+    data = request.get_json()
+
+    password = data.get("password")
+    new_password = data.get("new_password")
+
+    if not password or not new_password:
+        return jsonify({"error": "Both fields required"}), 400
+
+    users = get_users_collection()
+    user = users.find_one({"username": current_username})
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # verify old password
+    if not check_password_hash(user["password"], password):
+        return jsonify({"error": "Incorrect current password"}), 401
+
+    # update new password
+    hashed = generate_password_hash(new_password)
+    users.update_one(
+        {"username": current_username},
+        {"$set": {"password": hashed}}
+    )
+
+    return jsonify({"message": "Password updated successfully!"}), 200
