@@ -14,7 +14,6 @@ client = MongoClient(uri)
 # creating database instance
 db = client[env.DB_NAME]
 
-
 def get_db():
     return db
 
@@ -32,3 +31,9 @@ def get_puzzles_collection():
 
 def get_roadmap_goals_collection():
     return db[Collection.ROADMAP_GOALS.value]
+
+def get_quizzes_collection():
+    return db[Collection.QUIZZES.value]
+
+def get_sessions_collection():
+    return db[Collection.SESSIONS.value]
