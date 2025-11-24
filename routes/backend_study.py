@@ -5,6 +5,7 @@ from pymongo import MongoClient
 from pymongo import ReturnDocument
 from dotenv import load_dotenv
 from bson import ObjectId, errors
+from flask_jwt_extended import get_jwt_identity, jwt_required
 import certifi
 from google import genai
 
@@ -19,28 +20,7 @@ db_pass = os.getenv("DB_PASSWORD")
 db_name = os.getenv("DB_NAME")
 
 google_api_key = os.getenv("GENAI_API_KEY")
-ai_client = genai.Client(api_key=google_api_key)
-
-
-# @study_bp.route("/ai-test", methods=["GET"])
-# def ai_test():
-#     try:
-#         resp = ai_client.models.generate_content(
-#             model="gemini-2.5-flash", 
-#             contents="Why is the sky blue? One short sentence.",
-#         )
-#         text = getattr(resp, "text", "") or ""
-#         if not text: 
-#             text = "\n".join(
-#                 (getattr(x, "text", "") or "")
-#                 for c in (getattr(resp, "candidates", []) or [])
-#                 for x in (getattr(getattr(c, "content", {}), "parts", []) or [])
-#                 if getattr(x, "text", "") 
-#             )
-#         return jsonify({"text": text}), 200
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
-    
+ai_client = genai.Client(api_key=google_api_key) 
 
 
 #database    
@@ -60,8 +40,8 @@ def ai_card():
         model="gemini-2.5-flash", 
         contents=f'Give one flashcard for the "{topic}" as a single json object with the keys "front" and "back". Return only the json object. Put the question on "front" and the answer on "back".',
     ) #prompt for gemini, basically a user puts in a topic then gemini creates a json flashcard
-    text = getattr(resp, "text", "") or ""
     
+    text = getattr(resp, "text", "") or ""
     text_clean = re.sub(r"^```[a-zA-Z]*\s*|\s*```$","", text.strip()) #removes code fences
     
     try:
@@ -81,6 +61,82 @@ def ai_card():
     ins = db.flashcards.insert_one(doc) #adds flashcard to mongo database
     return jsonify({"id": str(ins.inserted_id), "front": front, "back": back}), 200
 
+@study_bp.route("/ai-card/multi", methods=["POST"])
+def ai_card_multi():
+    data = request.get_json(force=True) or {}
+
+    topic = (data.get("topic") or "").strip()
+    raw_count = data.get("count")
+
+    if not topic:
+        return jsonify({"error": "topic_required"}), 400
+
+    try:
+        count = int(raw_count)
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid_count"}), 400
+
+    if count <= 0 or count > 20:
+        return jsonify({"error": "count_out_of_range"}), 400
+
+    # Ask Gemini for multiple flashcards as a JSON array
+    prompt = (
+        f'Give {count} flashcards for the topic "{topic}" as a JSON array. '
+        'Each element must be an object with the keys "front" and "back". '
+        'Put the question or prompt on "front" and the answer on "back". The answer should be brief'
+        'Return only the JSON array.'
+    )
+
+    try:
+        resp = ai_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+    except Exception as e:
+        return jsonify({"error": "ai_error", "detail": str(e)}), 502
+
+    text = getattr(resp, "text", "") or ""
+
+    text_clean = re.sub(r"^```[a-zA-Z]*\s*|\s*```$", "", text.strip())
+
+    try:
+        obj = json.loads(text_clean)
+    except json.JSONDecodeError:
+        m = re.search(r"\[[\s\S]*\]", text_clean)
+        if not m:
+            return jsonify({"error": "bad_json", "preview": text_clean[:200]}), 502
+        obj = json.loads(m.group(0))
+
+    if not isinstance(obj, list) or len(obj) == 0:
+        return jsonify({"error": "bad_json_shape", "preview": obj}), 502
+
+    cards_to_insert = []
+    for item in obj:
+        if not isinstance(item, dict):
+            return jsonify({"error": "bad_json_item", "preview": item}), 502
+
+        front = (item.get("front") or "").strip()
+        back = (item.get("back") or "").strip()
+
+        if not front or not back:
+            return jsonify({"error": "missing_fields", "preview": item}), 502
+
+        cards_to_insert.append({"front": front, "back": back})
+
+    if not cards_to_insert:
+        return jsonify({"error": "no_valid_cards"}), 502
+
+    result = db.flashcards.insert_many(cards_to_insert)
+
+    cards = []
+    for inserted_id, doc in zip(result.inserted_ids, cards_to_insert):
+        cards.append({
+            "id": str(inserted_id),
+            "front": doc["front"],
+            "back": doc["back"],
+        })
+
+    return jsonify({"cards": cards}), 200
 
 @study_bp.route("/test-db")
 def test_db():
@@ -110,6 +166,7 @@ def seed():
     
 @study_bp.route("/flashcards", methods=["POST"]) #create a flashcard
 def create_flashcard():
+
     data = request.get_json(force=True) #user input data
     front = (data or {}).get("front", "").strip() #from data get front flashcard field 
     back = (data or {}).get("back", "").strip() #from data get back flashcard field
@@ -181,3 +238,37 @@ def get_flashcard(id):
         return jsonify({"error": "not_found", "id": id}), 404 
     else: 
         return jsonify({ "id": str(card["_id"]), "front": card["front"], "back": card["back"] }), 200 #if card is found display its contents
+
+
+@study_bp.route("/flashcards/multi", methods= ["POST"])
+def create_multicards():
+    data = request.get_json() or {} #get json body
+    
+    cards = data.get("cards") #takes cards list
+    if not isinstance(cards, list) or len(cards) == 0:
+        return jsonify({"error": "invalid_body"}), 400 #error if cards list is empty
+    
+    cards_to_insert = []
+    for raw in cards: #makes sure each card is actually getting made in the proper format
+        if not isinstance(raw, dict):
+            return jsonify({"error":"invalid_body"}), 400
+        
+        front = (raw.get("front") or "").strip()
+        back = (raw.get("back") or "").strip()
+        
+        if not front or not back:
+            return jsonify({"error": "Please write for both the front and the back."}), 400
+        
+        cards_to_insert.append({"front": front, "back": back})
+        
+    result = db.flashcards.insert_many(cards_to_insert)
+    
+    created_cards = []
+    for inserted_id, cards in zip(result.inserted_ids, cards_to_insert):
+        created_cards.append({
+            "id" : str(inserted_id),
+            "front": cards["front"],
+            "back": cards["back"],
+        })
+    
+    return jsonify({"cards": created_cards}), 201
