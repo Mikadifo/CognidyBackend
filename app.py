@@ -6,8 +6,10 @@ from flask_swagger_ui import get_swaggerui_blueprint
 from config.env_config import get_env_config
 from routes.users import users_bp
 from routes.notes import notes_bp
+from routes.quizzes import quizzes_bp
 from routes.roadmap_goals import roadmap_bp
 from routes.backend_study import study_bp
+from routes.sessions import sessions_bp
 from flask_jwt_extended import JWTManager
 
 app = Flask(__name__)
@@ -55,8 +57,10 @@ app.register_blueprint(api_bp, url_prefix="/api")
 app.register_blueprint(users_bp, url_prefix="/api/users")
 app.register_blueprint(notes_bp, url_prefix="/api/notes")
 app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap_goals")
-app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 app.register_blueprint(study_bp, url_prefix="/api/study")
+app.register_blueprint(quizzes_bp, url_prefix="/api/quizzes")
+app.register_blueprint(sessions_bp, url_prefix="/api/sessions")
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    app.run(debug=True, host="0.0.0.0", port=5000)

@@ -21,7 +21,7 @@ def get_goals():
     goals.sort("order")
     goals = goals.to_list()
 
-    return jsonify({"message": "Notes retrieved successfully", "data": goals}), 200
+    return jsonify({"message": "Goals retrieved successfully", "data": goals}), 200
 
 @roadmap_bp.route("/new", methods=["POST"])
 @jwt_required()

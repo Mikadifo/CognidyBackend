@@ -8,6 +8,7 @@ from controllers.goals_controller import delete_user_goal
 from database import get_roadmap_goals_collection, get_users_collection
 from flask import Blueprint, jsonify, request
 from services.roadmap_service import generate_roadmap_goals_background
+from services.quizzes_service import generate_quizzes_background
 
 MAX_UPLOADS = 5
 notes_bp = Blueprint("notes", __name__)
@@ -81,7 +82,8 @@ def upload_auth():
             "status": {
                 "flashcards": "done", # TODO: set to generating once service is implemented
                 "puzzles": "done", # TODO: set to generating once service is implemented
-                "goals": "generating"
+                "goals": "generating",
+                "quizzes": "generating"
             }
     }
 
@@ -92,6 +94,9 @@ def upload_auth():
     goals_thread.start()
     # TODO: call generate flashcards
     # TODO: call generate puzzles
+
+    quizzes_thread = Thread(target=generate_quizzes_background, args=(file_bytes, file_ext, str(user["_id"]), str(note["_id"])))
+    quizzes_thread.start()
 
     get_users_collection().find_one_and_update({"username": username}, {"$push": {"notes": note}})
 
