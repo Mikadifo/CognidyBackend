@@ -23,7 +23,7 @@ def signup():
         return jsonify({"message": "Username already exists"}), 400
 
     # Hash the password
-    hashed_pw = generate_password_hash(password)
+    hashed_pw = generate_password_hash(password, method="pbkdf2:sha256")
 
     # Insert user
     get_users_collection().insert_one(
@@ -81,14 +81,20 @@ def update_user():
     data = request.get_json()
 
     new_username = data.get("username")
-    new_email = data.get("email")
+    
 
     users = get_users_collection()
+
+    # Prevent duplicate username
+    if new_username != current_username:
+      if users.find_one({"username": new_username}):
+        return jsonify({"error": "Username already taken"}), 400
+
 
     # Update user info
     users.update_one(
         {"username": current_username},
-        {"$set": {"username": new_username, "email": new_email}}
+        {"$set": {"username": new_username}}
     )
 
     # Issue new token so frontend stays in sync
@@ -124,10 +130,34 @@ def reset_password():
         return jsonify({"error": "Incorrect current password"}), 401
 
     # update new password
-    hashed = generate_password_hash(new_password)
+    hashed = generate_password_hash(new_password, method="pbkdf2:sha256")
+
     users.update_one(
         {"username": current_username},
         {"$set": {"password": hashed}}
     )
 
     return jsonify({"message": "Password updated successfully!"}), 200
+
+# Check Current Password (for frontend button)
+@users_bp.route("/check_password", methods=["POST"])
+@jwt_required()
+def check_password():
+    current_username = get_jwt_identity()
+    data = request.get_json()
+    password = data.get("password")
+
+    if not password:
+        return jsonify({"data": {"valid": False}}), 200
+
+    users = get_users_collection()
+    user = users.find_one({"username": current_username})
+
+
+    if not user:
+        return jsonify({"data": {"valid": False}}), 200
+
+    is_valid = check_password_hash(user["password"], password)
+
+    return jsonify({"data": {"valid": is_valid}}), 200
+
