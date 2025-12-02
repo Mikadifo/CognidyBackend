@@ -58,9 +58,9 @@ app.register_blueprint(notes_bp, url_prefix="/api/notes")
 app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap_goals")
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 app.register_blueprint(puzzles_bp, url_prefix="/api/puzzles")
-app.register_blueprint(puzzles_bp, url_prefix="/api/puzzles")
+app.register_blueprint(puzzles_bp, name="PUZZLE", url_prefix="/api/puzzles")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
 
-# Note: need to implement t
+
