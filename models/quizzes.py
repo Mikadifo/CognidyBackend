@@ -1,14 +1,14 @@
+from typing import List
 from pydantic import BaseModel, Field, field_validator
 
-MAX_GOALS = 15
+MAX_QUIZZES = 15
 
 class RoadmapGoal(BaseModel):
-    order: int = Field(..., ge=1, le=MAX_GOALS)
-    title: str = Field(..., description="Short title")
-    brief: str = Field(..., description="Short description")
-    completed: bool = False
+    question: str = Field(..., description="Question")
+    options: List[str] = Field(..., description="List of options")
+    correct: str = Field(..., description="Correct option string")
 
-    @field_validator("title", "brief", mode="after")
+    @field_validator("question",  mode="after")
     @classmethod
     def non_empty_strip(cls, value: str, info) -> str:
         value = value.strip()
@@ -17,3 +17,4 @@ class RoadmapGoal(BaseModel):
             raise ValueError(f"{info.field_name} must not be empty")
 
         return value
+

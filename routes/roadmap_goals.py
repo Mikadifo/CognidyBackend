@@ -21,7 +21,7 @@ def get_goals():
     goals.sort("order")
     goals = goals.to_list()
 
-    return jsonify({"message": "Notes retrieved successfully", "data": goals}), 200
+    return jsonify({"message": "Goals retrieved successfully", "data": goals}), 200
 
 @roadmap_bp.route("/new", methods=["POST"])
 @jwt_required()
@@ -36,7 +36,6 @@ def create_goal():
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-
         goals_size = get_user_goals_count(str(user["_id"]))
 
         if goals_size >= MAX_GOALS:
@@ -49,8 +48,8 @@ def create_goal():
         else:
             return jsonify({"error": "Error while saving goal"}), 500
     except ValidationError as error:
-        first_error = error.errors()[0]
-        return jsonify({"error": first_error.get("msg")}), 400
+        errors = {error["loc"][0]: error["msg"] for error in error.errors()}
+        return jsonify({"error": errors}), 400
 
 @roadmap_bp.route("/delete/<int:goal_order>", methods=["DELETE"])
 @jwt_required()

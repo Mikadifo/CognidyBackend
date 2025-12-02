@@ -16,7 +16,7 @@ def delete_user_goal_by_id(goal_id, user_id):
 def delete_user_goal(goal, user_id):
     print("Deleting goal: ", goal["_id"], type(goal["_id"]))
     get_roadmap_goals_collection().update_many(
-            {"user_id": user_id, "order": {"$gt": goal["order"]}},
+            {"user_id": user_id, "order": {"$gt": int(goal["order"])}},
             {"$inc": {"order": -1}}
     )
 

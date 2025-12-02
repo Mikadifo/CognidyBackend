@@ -4,9 +4,11 @@ from datetime import datetime, timezone
 import hashlib
 from bson import ObjectId
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from database import get_users_collection
+from controllers.goals_controller import delete_user_goal
+from database import get_roadmap_goals_collection, get_users_collection
 from flask import Blueprint, jsonify, request
 from services.roadmap_service import generate_roadmap_goals_background
+from services.quizzes_service import generate_quizzes_background
 
 MAX_UPLOADS = 5
 notes_bp = Blueprint("notes", __name__)
@@ -80,7 +82,8 @@ def upload_auth():
             "status": {
                 "flashcards": "done", # TODO: set to generating once service is implemented
                 "puzzles": "done", # TODO: set to generating once service is implemented
-                "goals": "generating"
+                "goals": "generating",
+                "quizzes": "generating"
             }
     }
 
@@ -91,6 +94,9 @@ def upload_auth():
     goals_thread.start()
     # TODO: call generate flashcards
     # TODO: call generate puzzles
+
+    quizzes_thread = Thread(target=generate_quizzes_background, args=(file_bytes, file_ext, str(user["_id"]), str(note["_id"])))
+    quizzes_thread.start()
 
     get_users_collection().find_one_and_update({"username": username}, {"$push": {"notes": note}})
 
@@ -113,6 +119,14 @@ def delete_note(note_id):
         return jsonify({"error": "Invalid note ID"}), 400
 
     result = get_users_collection().update_one({"username": username}, {"$pull": {"notes": {"_id": note_oid}}})
+
+    goals = get_roadmap_goals_collection().find({"note_id": note_id})
+    goals.sort("order", -1)
+    goals = goals.to_list()
+
+    for goal in goals:
+        if goal["note_id"] == note_id:
+            delete_user_goal(goal, str(user["_id"]))
 
     if result.modified_count == 0:
         return jsonify({"error": "Note not found for this user"}), 404
@@ -147,5 +161,5 @@ def get_note_status(note_id):
     if not user_note:
         return jsonify({"message": "User note not found"}), 404
 
-    return jsonify({"message": "Login successful", "data": user_note["status"]}), 200
+    return jsonify({"message": "Fetched status successfully", "data": user_note["status"]}), 200
 
