@@ -8,7 +8,7 @@ from bson import ObjectId
 env = get_env_config()
 puzzles_bp = Blueprint('puzzles', __name__)
 
-@puzzles_bp.route('/generate', methods=['POST'])  # Added generate route
+@puzzles_bp.route('/', methods=['POST'])  # Added generate route
 @jwt_required()
 def generate_puzzle():
     try:
