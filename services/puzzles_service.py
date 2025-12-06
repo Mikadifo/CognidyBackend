@@ -68,7 +68,7 @@ def generate_guest_puzzle(file):
           "AnswerGrid": {[
             // 30x30 array where null = empty cell, letters for filled cells
           ],
-          "EmptyGrid": [
+          "UserGrid": [
             // 30x30 array where null = empty cell
           ],
           "words": [
@@ -81,67 +81,101 @@ def generate_guest_puzzle(file):
         here is an example puzzle to follow, albeit with a 6x6 grid for simplicity
         (they're spaced out here for readability, but should be continuous arrays in actual JSON, so 6 rows of 6 elements each for this example):
         {
-          "metadata": {
-            "puzzleID": "[puzzle_id]",
-            "title": "Generated from sample.txt",
-            "completed": false
-          },
-          "answerGrid": {[
-             "C",  "A", "T", null,  null, null 
-            null, null, "A", null,  null, null 
-            null, null, "R",  "A",  "T",  null 
-            null, null, null, "R",  null, null 
-            null, null, null, "T",  null, null
-            null, null, null, null, null, null
-          ],
-          "emptyGrid": {[
-            null, null, null, null, null, null
-            null, null, null, null, null, null
-            null, null, null, null, null, null
-            null, null, null, null, null, null
-            null, null, null, null, null, null
-            null, null, null, null, null, null
-          ],
-          "words": [
-            {
-              "number": 1,
-              "word": "CAT",
-              "direction": "across",
-              "startRow": 0,
-              "startCol": 0,
-              "length": 3,
-              "hint": "a small, household domesticated cousin of the lion"
-            }
-            {
-              "number": 2,
-              "word": "TAR",
-              "direction": "down",
-              "startRow": 2,
-              "startCol": 0,
-              "length": 3,
-              "hint": "a road vehicle, typically with four wheels, powered by an internal combustion engine"
-            }
-            {
-              "number": 3,
-              "word": "RAT",
-              "direction": "across",
-              "startRow": 2,
-              "startCol": 2,
-              "length": 3,
-              "hint": "a rodent that resembles a large mouse, typically having a pointed sn
-            }
-            {
-              "number": 4,
-              "word": "ART",
-              "direction": "down",
-              "startRow": 3,
-              "startCol": 2,
-              "length": 3,
-              "hint": "the expression or application of human creative skill and imagination"
-            }
-          ]
-        }
+  "metadata": {
+    "puzzleID": "puzzle_id",
+    "title": "Generated from sample.txt",
+    "completed": false
+  },
+
+  "answerGrid": [
+    ["C",  "A",  "T",  null, null, null],
+    [null, null, "A",  null, null, null],
+    [null, null, "R",  "A",  "T",  null],
+    [null, null, null, "R",  null, null],
+    [null, null, null, "T",  null, null],
+    [null, null, null, null, null, null]
+  ],
+
+  "userGrid": [
+    [null, null, null, null, null, null],
+    [null, null, null, null, null, null],
+    [null, null, null, null, null, null],
+    [null, null, null, null, null, null],
+    [null, null, null, null, null, null],
+    [null, null, null, null, null, null]
+  ],
+
+  "words": [
+    {
+      "number": 1,
+      "word": "CAT",
+      "direction": "across",
+      "startRow": 0,
+      "startCol": 0,
+      "length": 3,
+      "hint": "A small domesticated feline."
+    },
+    {
+      "number": 2,
+      "word": "TAR",
+      "direction": "down",
+      "startRow": 2,
+      "startCol": 0,
+      "length": 3,
+      "hint": "A black viscous material used on roads."
+    },
+    {
+      "number": 3,
+      "word": "RAT",
+      "direction": "across",
+      "startRow": 2,
+      "startCol": 2,
+      "length": 3,
+      "hint": "A rodent resembling a large mouse."
+    },
+    {
+      "number": 4,
+      "word": "ART",
+      "direction": "down",
+      "startRow": 3,
+      "startCol": 2,
+      "length": 3,
+      "hint": "Human creative expression."
+    }
+  ]
+}
+
         """
+
+        response = genai_client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=[prompt, genai_file]
+        )
+
+        if genai_file.name is not None:
+            genai_client.files.delete(name=genai_file.name)
+
+        # Parse the AI response
+        try:
+            puzzle_data = json.loads(response.text)
+        except json.JSONDecodeError:
+            print("Failed to parse AI response as JSON")
+            return None
+
+        try:
+            #save to database
+            puzzles_collection = get_puzzles_collection()
+            puzzle_document = {
+                "metadata": puzzle_data.get("metadata", {}),
+                "AnswerGrid": puzzle_data.get("AnswerGrid", []),
+                "UserGrid": puzzle_data.get("UserGrid", []),
+                "words": puzzle_data.get("words", []),
+            }
+            result = puzzles_collection.insert_one(puzzle_document)
+            puzzle_document["_id"] = str(result.inserted_id)
+            return puzzle_document
+        except Exception as db_error:
+            print(f"Error saving puzzle to database: {db_error}")
     except:
         return "Error! Backtrack with debugger."
 
