@@ -18,11 +18,11 @@ def signup():
     password = data.get("password")
 
     if not username or not email or not password:
-        return jsonify({"message": "All fields are required"}), 400
+        return jsonify({"error": "All fields are required"}), 400
 
     # Check if user already exists
     if get_users_collection().find_one({"username": username}):
-        return jsonify({"message": "Username already exists"}), 400
+        return jsonify({"error": "Username already exists"}), 400
 
     # Hash the password
     hashed_pw = generate_password_hash(password, method="pbkdf2:sha256")
@@ -45,7 +45,7 @@ def login():
     password = data.get("password")
 
     if not username or not password:
-        return jsonify({"message": "Username and password required"}), 400
+        return jsonify({"error": "Username and password required"}), 400
 
     user = get_users_collection().find_one({"username": username})
 
@@ -53,7 +53,7 @@ def login():
         access_token = create_access_token(identity=user["username"])
         return jsonify({"message": "Login successful", "data": access_token}), 200
     else:
-        return jsonify({"message": "Invalid credentials"}), 401
+        return jsonify({"error": "Invalid credentials"}), 401
     
     
 # Get current user info
