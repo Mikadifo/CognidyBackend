@@ -37,7 +37,7 @@ def add_session():
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        new_session["number"] = get_next_session_number(user["_id"])
+        new_session["number"] = get_next_session_number(user["_id"], new_session["section"])
         new_session["completed_at"] = datetime.combine(new_session["completed_at"], datetime.min.time(), tzinfo=timezone.utc)
         new_session["user_id"] = str(user["_id"])
         created = get_sessions_collection().insert_one(new_session)
