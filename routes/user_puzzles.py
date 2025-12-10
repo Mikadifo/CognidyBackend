@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from database import get_puzzles_collection  # Fixed import
 from services.puzzles_service import generate_user_puzzles
 from config.env_config import get_env_config
+from datetime import datetime  
 from bson import ObjectId
 
 env = get_env_config()
