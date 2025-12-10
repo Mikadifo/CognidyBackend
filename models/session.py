@@ -5,7 +5,7 @@ class Session(BaseModel):
     section: str = Field(..., description="Cognidy Dashboard Section")
     completed_at: date = Field(..., description="Completion date")
     total: int = Field(..., ge=1)
-    correct: int = Field(..., ge=1)
+    correct: int = Field(..., ge=0)
 
     @field_validator("section", mode="after")
     @classmethod
