@@ -291,6 +291,18 @@
         }
       }
     },
+    "/puzzles-pairs/": {
+      "get": {
+        "tags": ["Puzzles"],
+        "summary": "Get all user match the pairs puzzles",
+        "description": "Find all puzzles linked to the user from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Puzzles Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
+    },
     "/sessions/": {
       "get": {
         "tags": ["Sessions"],
@@ -355,6 +367,10 @@
     {
       "name": "Quizzes",
       "description": "Quizzes, Learning section"
+    },
+    {
+      "name": "Puzzles",
+      "description": "Puzzles, Learning section"
     },
     {
       "name": "Sessions",
