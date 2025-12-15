@@ -22,8 +22,9 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=15)
 jwt = JWTManager(app)
 CORS(
     app,
-    origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app"],
+    #origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app"],
     supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 )
 
