@@ -10,6 +10,7 @@ from routes.quizzes import quizzes_bp
 from routes.roadmap_goals import roadmap_bp
 from routes.backend_study import study_bp
 from routes.sessions import sessions_bp
+from routes.puzzles_pairs import puzzles_pair_bp
 from flask_jwt_extended import JWTManager
 
 app = Flask(__name__)
@@ -21,8 +22,9 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=15)
 jwt = JWTManager(app)
 CORS(
     app,
-    origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app", "http://192.168.1.48:3000"],
+    # origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app"],
     supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 )
 
@@ -59,6 +61,7 @@ app.register_blueprint(notes_bp, url_prefix="/api/notes")
 app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap_goals")
 app.register_blueprint(study_bp, url_prefix="/api/study")
 app.register_blueprint(quizzes_bp, url_prefix="/api/quizzes")
+app.register_blueprint(puzzles_pair_bp, url_prefix="/api/puzzles-pairs")
 app.register_blueprint(sessions_bp, url_prefix="/api/sessions")
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
