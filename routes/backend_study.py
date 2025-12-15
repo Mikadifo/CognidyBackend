@@ -1,5 +1,5 @@
-import os, json, re, traceback
-from flask import Flask, jsonify, request, Blueprint
+import os, json, re
+from flask import jsonify, request, Blueprint
 from flask_cors import CORS
 from pymongo import MongoClient
 from pymongo import ReturnDocument
@@ -32,6 +32,12 @@ db = client[db_name]
 @study_bp.route("/ai-card", methods=["POST"]) #create card with gemini ai
 @jwt_required()
 def ai_card():
+    """
+    This route generates a flashcard for an authenticated user using Google Gemini model gemini-2.5-flash.
+    This generation takes the prompt of a question or topic then Gemini will create a front and back json object for flashcard creation
+    An optional section field is included to tag the card being created
+    Returns: An ai generated flashcard object {id, front, back, section?}
+    """
     username = get_jwt_identity()
     data = request.get_json(force=True) or {}
     topic = (data.get("topic") or "").strip() #what the user wants to create a card about
@@ -82,6 +88,12 @@ def ai_card():
 @study_bp.route("/ai-card/multi", methods=["POST"])#create multiple ai generated cards at once
 @jwt_required()
 def ai_card_multi():
+    """
+    This route generates a flashcards for an authenticated user using Google Gemini model gemini-2.5-flash.
+    This generation takes the prompt of a topic inputted by a user, and how many cards of this topic will be created then Gemini will create a front and back json objects based on the amount asked for, for flashcard creation
+    An optional section field is included to tag the cards being created
+    Returns: Ai generated flashcards {'cards': [{id, front, back, section?}, ...]}
+    """
     username = get_jwt_identity()
     data = request.get_json(force=True) or {}
     topic = (data.get("topic") or "").strip()
@@ -96,7 +108,7 @@ def ai_card_multi():
     except (TypeError, ValueError):
         return jsonify({"error": "invalid_count"}), 400
 
-    if count <= 0 or count > 30:
+    if count <= 0 or count > 30:  #limits users to 30 cards
         return jsonify({"error": "count_out_of_range"}), 400
 
     # Ask Gemini for multiple flashcards as a JSON array
@@ -104,7 +116,7 @@ def ai_card_multi():
         f'Give {count} flashcards for the topic "{topic}" as a JSON array. '
         'Each element must be an object with the keys "front" and "back". '
         'Put the question or prompt on "front" and the answer on "back". '
-        'The answer should be brief. '
+        'The answer must be brief. '
         'Return only the JSON array.'
     )
 
@@ -167,17 +179,22 @@ def ai_card_multi():
     return jsonify({"cards": cards}), 201
 
 
-@study_bp.route("/flashcards", methods=["GET"]) #route to show all flashcards
+@study_bp.route("/flashcards", methods=["GET"]) 
 @jwt_required()
 def get_flashcards():
+    """
+    This route returns the full list of flashcards of an authenticated user.
+    There is a filter where you can return cards that only match the section that you've picked
+    Returns: A list of objects(flashcards) {id, front, back, section?}
+    """
     username = get_jwt_identity()
     section = request.args.get("section")
     
     query = {"username": username}
-    if section:
+    if section and section != "all":
         query["section"] = section
         
-    cards = list(db["flashcards"].find(query)) #gets list of flashcards from database
+    cards = list(db.flashcards.find(query)) #gets list of flashcards from database
     
     
     flashcards = [] 
@@ -187,15 +204,21 @@ def get_flashcards():
             "front": c["front"], 
             "back": c["back"]
             } 
-        if "section" in c and c["section"]:
+        if "section" in c and c["section"]: #if section exists for the card
             card["section"] = c["section"]
         flashcards.append(card)
-    return jsonify(flashcards) #returns json of all flashcards
+    return jsonify(flashcards), 200 #returns json of all flashcards
 
 
-@study_bp.route("/flashcards", methods=["POST"]) #create a flashcard
+@study_bp.route("/flashcards", methods=["POST"]) 
 @jwt_required()
 def create_flashcard():
+    """
+    This route creates a flashcard for an authenticated user.
+    There is an optional 'section' input if a user wants to tag the card they are creating
+    Gives an error if required fields (front or back) have no input
+    Returns: A new flashcard object {id, front, back, section?}
+    """
     username = get_jwt_identity()
     data = request.get_json(force=True) or {} #user input data
     front = (data or {}).get("front", "").strip() #from data get front flashcard field 
@@ -203,7 +226,7 @@ def create_flashcard():
     section = (data.get("section") or "").strip() #section area to organize flashcards if wanted
     
     if not front or not back:
-        return jsonify({"error": "Please write for both the front and the back."}), 400 #error if either field is not found
+        return jsonify({"error": "missing_fields"}), 400 #error if either field is not found
     
     card = {"front": front, "back": back, "username": username}
     if section:
@@ -215,7 +238,7 @@ def create_flashcard():
         "back": back
     }
     if "section" in card :
-        flashcard["section"] = card["section"]
+        flashcard["section"] = card["section"] #gives card a section if user inputs it
         
     return jsonify(flashcard), 201
         
@@ -223,6 +246,12 @@ def create_flashcard():
 @study_bp.route("/flashcards/<id>", methods=["DELETE"])
 @jwt_required()
 def delete_flashcard(id):
+    """
+    This route takes an authenticated user's flashcard id and erases the flashcard tied to it
+    Args:
+        id (str): Flashcard id
+    Returns: A successful deletion or error if not deleted {deleted, id}
+    """
     username = get_jwt_identity()
     try:
         oid = ObjectId(id) #needs id of card to delete it
@@ -231,14 +260,21 @@ def delete_flashcard(id):
     
     delete = db.flashcards.delete_one({"_id": oid, "username": username }) #deletes flashcard
     if delete.deleted_count == 1: #checks if anything got deleted, if not error shows
-        return jsonify({"status": "deleted", "id": id}), 200
+        return jsonify({"deleted" : True , "id": id}), 200
     else:
         return jsonify({"error": "not_found", "id": id}), 404
 
 
-@study_bp.route("/flashcards/<id>", methods=["PUT"]) #route to edit a flashcard
+@study_bp.route("/flashcards/<id>", methods=["PUT"])
 @jwt_required()
 def edit_flashcard(id):
+    """
+    This route edits/updates parts of a flashcard for an authenticated user, this can include the front, back, or section
+    Errors show if the card id thats trying to be updated is not found or if no fields are being updated and the user tries to update
+    Args:
+        id (str): Flashcard id
+    Returns: An updated flashcard {id, front, back, section?}
+    """
     username = get_jwt_identity()
     try:
         oid = ObjectId(id) #uses flashcard id
@@ -266,10 +302,10 @@ def edit_flashcard(id):
     if not update_fields:
         return jsonify({"error": "invalid_body"}), 400 #if there's no fields being edited then error comes up
     
-    filter = {"_id": oid, "username": username}
+    query_filter = {"_id": oid, "username": username}
     update_card = {"$set": update_fields}
     card = db.flashcards.find_one_and_update(
-        filter,
+        query_filter,
         update_card,
         return_document=ReturnDocument.AFTER,
     ) #finds specific id of card that wants to be updated and then updates it to the user's changes
@@ -289,9 +325,13 @@ def edit_flashcard(id):
     return jsonify(flashcards), 200
 
 
-@study_bp.route("/flashcards/<id>", methods=["GET"]) #get and show specific card
+@study_bp.route("/flashcards/<id>", methods=["GET"])
 @jwt_required()
 def get_flashcard(id):
+    """
+    This route returns a flashcard of an authenticated user.
+    Returns: A flashcard {id, front, back, section?}
+    """
     username = get_jwt_identity()
     try:
         oid = ObjectId(id) #uses card id
@@ -315,8 +355,14 @@ def get_flashcard(id):
 @study_bp.route("/flashcards/multi", methods= ["POST"])
 @jwt_required()
 def create_multicards():
+    """
+    This route creates multiple flashcards for an authenticated user.
+    There is an optional 'section' input if a user wants to tag the cards they are creating
+    Gives an error if required fields (front or back) have no input
+    Returns: A list of cards {"cards": [{id, front, back, section?}, ...]}
+    """
     username = get_jwt_identity()
-    data = request.get_json() or {} #get json body
+    data = request.get_json(force=True) or {} #get json body
     cards = data.get("cards") #takes cards list
     section = (data.get("section") or "").strip()
     
@@ -332,7 +378,7 @@ def create_multicards():
         back = (raw.get("back") or "").strip()
         
         if not front or not back:
-            return jsonify({"error": "Please write for both the front and the back."}), 400
+            return jsonify({"error": "missing_fields"}), 400
         
         cardsIns = {
             "front": front,
@@ -347,35 +393,17 @@ def create_multicards():
     result = db.flashcards.insert_many(cards_to_insert)
     
     created_cards = []
-    for inserted_id, cards in zip(result.inserted_ids, cards_to_insert):
+    for inserted_id, fcards in zip(result.inserted_ids, cards_to_insert):
         flashcards = {
             "id" : str(inserted_id),
-            "front": cards["front"],
-            "back": cards["back"],
+            "front": fcards["front"],
+            "back": fcards["back"],
         }
-        if "section" in cards and cards["section"]:
-            flashcards["section"] = cards["section"]
+        if "section" in fcards and fcards["section"]:
+            flashcards["section"] = fcards["section"]
         
         created_cards.append(flashcards)
     
     return jsonify({"cards": created_cards}), 201
 
 
-@study_bp.route("/test-db")
-def test_db():
-    try:
-        client.admin.command('ping')
-        return jsonify({"status": "connected"})
-    except Exception as e:
-        return jsonify({"error": str(e)})
-    
-
-@study_bp.route("/seed", methods=["POST"])
-def seed():
-    if db.flashcards.count_documents({}) == 0:
-        doc = {"front": "What is Flask?", "back": "A lightweight web framework for Python"}
-        inserted = db.flashcards.insert_one(doc)
-        return jsonify({"inserted_id": str(inserted.inserted_id), "note": "seeded 1 doc"}), 201
-    else:
-        return jsonify({"note": "collection not empty — no seed done"}), 200
-    
