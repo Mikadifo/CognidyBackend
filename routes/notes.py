@@ -7,6 +7,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from controllers.goals_controller import delete_user_goal
 from database import get_roadmap_goals_collection, get_users_collection
 from flask import Blueprint, jsonify, request
+from services.puzzle_pairs_service import generate_puzzles_background
 from services.roadmap_service import generate_roadmap_goals_background
 from services.quizzes_service import generate_quizzes_background
 from database import get_quizzes_collection
@@ -44,7 +45,7 @@ def upload_guest():
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
-    # data = TODO: call each MVP generate service, but roadmap_service
+    # data = TODO: call each MVP generate service, but roadmap_service and pairs puzzles
     data = {} # of type {flashcards: [], puzzles: []}
 
     return jsonify({"message": "Content generated for guest user", "data": data}), 200
@@ -85,19 +86,20 @@ def upload_auth():
             "created_at": datetime.now(timezone.utc),
             "status": {
                 "flashcards": "done", # TODO: set to generating once service is implemented
-                "puzzles": "done", # TODO: set to generating once service is implemented
+                "puzzles": "generating",
                 "goals": "generating",
                 "quizzes": "generating"
             }
     }
 
-    # TODO: Call 3 MVPS Threads here for generation
     file_bytes = file.read()
     file_ext = os.path.splitext(str(file.filename))[1]
+
     goals_thread = Thread(target=generate_roadmap_goals_background, args=(file_bytes, file_ext, str(user["_id"]), str(note["_id"])))
     goals_thread.start()
-    # TODO: call generate flashcards
-    # TODO: call generate puzzles
+
+    puzzles_pair_thread = Thread(target=generate_puzzles_background, args=(file_bytes, file_ext, str(user["_id"]), str(note["_id"])))
+    puzzles_pair_thread.start()
 
     quizzes_thread = Thread(target=generate_quizzes_background, args=(file_bytes, file_ext, str(user["_id"]), str(note["_id"])))
     quizzes_thread.start()
