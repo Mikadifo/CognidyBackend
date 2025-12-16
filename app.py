@@ -15,11 +15,10 @@ from flask_jwt_extended import JWTManager
 app = Flask(__name__)
 CORS(
     app,
-    #origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app"],
+    origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app"],
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    intercept_exceptions=True
 )
 env = get_env_config()
 
@@ -28,10 +27,10 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=15)
 
 jwt = JWTManager(app)
 
-# @app.before_request
-# def handle_options():
-    # if request.method == 'OPTIONS':
-        # return Response(status=200)
+@app.before_request
+def handle_options():
+    if request.method == 'OPTIONS':
+        return Response(status=200)
 
 # Get database instance (connection handled in database.py)
 api_bp = Blueprint("api", __name__)
