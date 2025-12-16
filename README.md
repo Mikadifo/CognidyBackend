@@ -49,21 +49,21 @@ It follows a **branch-based workflow** to keep development organized and easy to
    venv\Scripts\activate
    ```
 
-2. **Install dependencies**: 
+2. **Install dependencies**:
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 3. **Add env variables:** (Ask a teammate for this)
 
-    ```
-    DB_USERNAME=<username>
-    DB_PASSWORD=<password>
-    DB_NAME=cognidy
-    JWT_SECRET_KEY=<jwt_secret_key>
-    GENAI_API_KEY=<genai_api_key>
-    ```
+   ```
+   DB_USERNAME=<username>
+   DB_PASSWORD=<password>
+   DB_NAME=cognidy
+   JWT_SECRET_KEY=<jwt_secret_key>
+   GENAI_API_KEY=<genai_api_key>
+   ```
 
 4. **Start the Flask server**:
 
@@ -168,6 +168,13 @@ You need a `.env` file at the root of the project with the following values:
 DB_USERNAME=<db_username>
 DB_PASSWORD=<db_password>
 DB_NAME=<db_name>
+JWT_SECRET_KEY=<jwt>
+GENAI_API_KEY=<genai_api>
+EMAIL_USER=<email>
+EMAIL_PASS=<email_password>
+SMTP_SERVER=smtp.gamil.com
+SMTP_PORT=587
+FRONTEND_URL=http://localhost:3000
 ```
 
 ⚠️ Ask a team member for the actual values or retrieve them from GitHub Secrets.
