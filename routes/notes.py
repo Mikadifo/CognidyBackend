@@ -7,7 +7,13 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from controllers.goals_controller import delete_user_goal
 from database import get_roadmap_goals_collection, get_users_collection
 from flask import Blueprint, jsonify, request
+from services.puzzle_pairs_service import generate_puzzles_background
 from services.roadmap_service import generate_roadmap_goals_background
+from services.quizzes_service import generate_quizzes_background
+from database import get_quizzes_collection
+from database import get_flashcards_collection
+
+
 
 MAX_UPLOADS = 5
 notes_bp = Blueprint("notes", __name__)
@@ -39,7 +45,7 @@ def upload_guest():
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
-    # data = TODO: call each MVP generate service, but roadmap_service
+    # data = TODO: call each MVP generate service, but roadmap_service and pairs puzzles
     data = {} # of type {flashcards: [], puzzles: []}
 
     return jsonify({"message": "Content generated for guest user", "data": data}), 200
@@ -80,18 +86,23 @@ def upload_auth():
             "created_at": datetime.now(timezone.utc),
             "status": {
                 "flashcards": "done", # TODO: set to generating once service is implemented
-                "puzzles": "done", # TODO: set to generating once service is implemented
-                "goals": "generating"
+                "puzzles": "generating",
+                "goals": "generating",
+                "quizzes": "generating"
             }
     }
 
-    # TODO: Call 3 MVPS Threads here for generation
     file_bytes = file.read()
     file_ext = os.path.splitext(str(file.filename))[1]
+
     goals_thread = Thread(target=generate_roadmap_goals_background, args=(file_bytes, file_ext, str(user["_id"]), str(note["_id"])))
     goals_thread.start()
-    # TODO: call generate flashcards
-    # TODO: call generate puzzles
+
+    puzzles_pair_thread = Thread(target=generate_puzzles_background, args=(file_bytes, file_ext, str(user["_id"]), str(note["_id"])))
+    puzzles_pair_thread.start()
+
+    quizzes_thread = Thread(target=generate_quizzes_background, args=(file_bytes, file_ext, str(user["_id"]), str(note["_id"])))
+    quizzes_thread.start()
 
     get_users_collection().find_one_and_update({"username": username}, {"$push": {"notes": note}})
 
@@ -107,6 +118,9 @@ def delete_note(note_id):
     user = get_users_collection().find_one({"username": username})
     if not user:
         return jsonify({"error": "User not found"}), 404
+    
+    settings = user.get("settings", {})
+    auto_delete = settings.get("autoDeleteGeneratedContent", True)
 
     try:
         note_oid = ObjectId(note_id)
@@ -115,13 +129,21 @@ def delete_note(note_id):
 
     result = get_users_collection().update_one({"username": username}, {"$pull": {"notes": {"_id": note_oid}}})
 
-    goals = get_roadmap_goals_collection().find({"note_id": note_id})
-    goals.sort("order", -1)
-    goals = goals.to_list()
+    if auto_delete:
+        goals = get_roadmap_goals_collection().find({"note_id": note_id})
+        goals.sort("order", -1)
+        goals = goals.to_list()
 
-    for goal in goals:
-        if goal["note_id"] == note_id:
+        for goal in goals:
             delete_user_goal(goal, str(user["_id"]))
+
+                # Delete quizzes related to this note
+        get_quizzes_collection().delete_many({"note_id": note_id})
+
+                # Delete flashcards related to this note
+        get_flashcards_collection().delete_many({"note_id": note_id})
+
+
 
     if result.modified_count == 0:
         return jsonify({"error": "Note not found for this user"}), 404

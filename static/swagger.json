@@ -278,6 +278,77 @@
           "404": { "description": "User/Goal not found" }
         }
       }
+    },
+    "/quizzes/": {
+      "get": {
+        "tags": ["Quizzes"],
+        "summary": "Get all user quizzes",
+        "description": "Find all quizzes linked to the user from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Quizzes Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
+    },
+    "/puzzles-pairs/": {
+      "get": {
+        "tags": ["Puzzles"],
+        "summary": "Get all user match the pairs puzzles",
+        "description": "Find all puzzles linked to the user from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Puzzles Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
+    },
+    "/sessions/": {
+      "get": {
+        "tags": ["Sessions"],
+        "summary": "Get all user sessions",
+        "description": "Find all sessions linked to the user from a given JWT token",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "User Sessions Retrieved Successfully" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
+    },
+    "/sessions/add": {
+      "post": {
+        "tags": ["Sessions"],
+        "summary": "Add session",
+        "description": "Adds a new completed session",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "session data",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "section": { "type": "string" },
+                "total": { "type": "number" },
+                "correct": { "type": "number" },
+                "completed_at": {
+                  "type": "string",
+                  "format": "date",
+                  "example": "YYYY-MM-DD"
+                }
+              },
+              "required": ["correct", "total", "section, completed_at"]
+            }
+          }
+        ],
+        "responses": {
+          "201": { "description": "Session created" },
+          "400": { "description": "Invalid/Missing fields" },
+          "401": { "description": "Missing or invalid token" }
+        }
+      }
     }
   },
   "tags": [
@@ -292,6 +363,18 @@
     {
       "name": "Roadmap",
       "description": "Roadmap Goals"
+    },
+    {
+      "name": "Quizzes",
+      "description": "Quizzes, Learning section"
+    },
+    {
+      "name": "Puzzles",
+      "description": "Puzzles, Learning section"
+    },
+    {
+      "name": "Sessions",
+      "description": "Sessions, Progress section"
     }
   ]
 }
