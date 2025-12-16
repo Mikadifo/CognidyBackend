@@ -11,12 +11,12 @@ from routes.backend_study import study_bp
 from routes.sessions import sessions_bp
 from routes.puzzles_pairs import puzzles_pair_bp
 from flask_jwt_extended import JWTManager
-from routes.user_puzzles import puzzles_bp
+from routes.crossword_puzzles import crossword_bp
 
 app = Flask(__name__)
 CORS(
     app,
-    #origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app"],
+    origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app"],
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -24,17 +24,15 @@ CORS(
 )
 env = get_env_config()
 
-app = Flask(__name__)
-
 app.config["JWT_SECRET_KEY"] = env.JWT_SECRET_KEY
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=15)
 
 jwt = JWTManager(app)
 
-# @app.before_request
-# def handle_options():
-    # if request.method == 'OPTIONS':
-        # return Response(status=200)
+@app.before_request
+def handle_options():
+    if request.method == 'OPTIONS':
+        return Response(status=200)
 
 # Get database instance (connection handled in database.py)
 api_bp = Blueprint("api", __name__)
@@ -67,8 +65,7 @@ app.register_blueprint(quizzes_bp, url_prefix="/api/quizzes")
 app.register_blueprint(puzzles_pair_bp, url_prefix="/api/puzzles-pairs")
 app.register_blueprint(sessions_bp, url_prefix="/api/sessions")
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
-app.register_blueprint(puzzles_bp, url_prefix="/api/puzzles")
-app.register_blueprint(puzzles_bp, name="PUZZLE", url_prefix="/api/puzzles")
+app.register_blueprint(crossword_bp, url_prefix="/api/crosswords")
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=8000)

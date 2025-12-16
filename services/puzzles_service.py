@@ -1,498 +1,231 @@
-from google import genai
-from config.env_config import get_env_config
-from database import get_puzzles_collection, get_users_collection
-from constants.collections import Collection
+import os
 import json
+import uuid
+import mimetypes
 from datetime import datetime
+from werkzeug.utils import secure_filename
+import google.generativeai as genai
+from config.env_config import get_env_config
 
 env = get_env_config()
-genai_client = genai.Client(api_key=env.GENAI_API_KEY)
+genai.configure(api_key=env.GENAI_API_KEY)
 
-#CRUD operations for guest puzzles
+UPLOAD_FOLDER = 'temp_uploads'
+ALLOWED_EXTENSIONS = {'txt', 'pdf'}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
-def delete_guest_puzzle(puzzle_id):
-    puzzles_collection = get_puzzles_collection()
-    result = puzzles_collection.delete_one({"puzzle_id": puzzle_id})
-    return result.deleted_count > 0
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-def update_guest_puzzle_completion(puzzle_id, completed):
-    #1. find the puzzle from the db (by puzzle_id, will be the most recent state that was last saved)
-    #2. update its 'completed' field to True if completed, AnswerGrid with all the letters in places where the user placed them
+def create_crossword_prompt():
+    return """
+You are a crossword puzzle generator. Generate a crossword puzzle from the uploaded file content.
 
-    puzzles_collection = get_puzzles_collection()
-    result = puzzles_collection.find_one_and_update(
-        {"puzzle_id": puzzle_id},
-        {"$set": {"completed": str(completed)}},
-        return_document=True
-    )
-      #something where the result is the updated document, maybe I make a copy 
-    return result
+CRITICAL INSTRUCTIONS:
+1. Read the file content and extract 6-10 key terms (3-8 letters each)
+2. Create a crossword grid where words INTERSECT by sharing common letters
+3. Use a 15x15 grid maximum for web display
+4. Return ONLY valid JSON - no markdown, no explanations, no extra text
 
-def return_guest_puzzle(puzzle_id):
-    puzzles_collection = get_puzzles_collection()
-    puzzle = puzzles_collection.find_one({"puzzle_id": puzzle_id})
-    if puzzle is None:
-        print("No puzzle found with the given puzzle_id.")
+CROSSWORD RULES:
+- Words must intersect at shared letters (e.g., CAT and TAR share 'T')
+- Place longer words first, then fit shorter words that intersect
+- Number each word starting from 1
+- Include clear, educational hints for each word
+
+REQUIRED JSON FORMAT (follow exactly):
+{
+  "metadata": {
+    "puzzleID": "auto_generated_timestamp",
+    "title": "Crossword from [filename]",
+    "completed": false,
+    "gridSize": 15
+  },
+  "answerGrid": [
+    // Array of 15 arrays, each with 15 elements
+    // Use UPPERCASE letters for filled cells: "C", "A", "T"
+    // Use null for empty cells
+    // Example row: ["C", "A", "T", null, null, "D", "O", "G", null, null, null, null, null, null, null]
+  ],
+  "userGrid": [
+    // Array of 15 arrays, each with 15 elements
+    // ALL elements must be null (empty for user to fill)
+    // Example row: [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+  ],
+  "words": [
+    {
+      "number": 1,
+      "word": "EXAMPLE",
+      "direction": "across",
+      "startRow": 0,
+      "startCol": 0,
+      "length": 7,
+      "hint": "Sample or instance"
+    }
+  ]
+}
+
+VALIDATION CHECKLIST:
+✓ All grid arrays have exactly 15 rows and 15 columns
+✓ answerGrid uses UPPERCASE letters and null only
+✓ userGrid uses null only
+✓ Each word fits within grid boundaries
+✓ Intersecting words share the same letter at intersection points
+✓ Word positions (startRow, startCol) are 0-based indices
+✓ All hints are educational and clear
+
+EXAMPLE (6x6 for clarity):
+{
+  "metadata": {"puzzleID": "123", "title": "Sample", "completed": false, "gridSize": 6},
+  "answerGrid": [
+    ["C", "A", "T", null, null, null],
+    [null, null, "A", null, null, null],
+    [null, null, "R", "A", "T", null],
+    [null, null, null, "R", null, null],
+    [null, null, null, "T", null, null],
+    [null, null, null, null, null, null]
+  ],
+  "userGrid": [
+    [null, null, null, null, null, null],
+    [null, null, null, null, null, null],
+    [null, null, null, null, null, null],
+    [null, null, null, null, null, null],
+    [null, null, null, null, null, null],
+    [null, null, null, null, null, null]
+  ],
+  "words": [
+    {"number": 1, "word": "CAT", "direction": "across", "startRow": 0, "startCol": 0, "length": 3, "hint": "Feline pet"},
+    {"number": 2, "word": "TAR", "direction": "down", "startRow": 0, "startCol": 2, "length": 3, "hint": "Road material"},
+    {"number": 3, "word": "RAT", "direction": "across", "startRow": 2, "startCol": 2, "length": 3, "hint": "Small rodent"},
+    {"number": 4, "word": "ART", "direction": "down", "startRow": 2, "startCol": 3, "length": 3, "hint": "Creative work"}
+  ]
+}
+
+Now generate a crossword puzzle from the provided content.
+"""
+
+def validate_file(file):
+    """Validate uploaded file"""
+    if not file or file.filename == '':
+        return False, "No file selected"
+    
+    if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS):
+        return False, "Only .txt and .pdf files are allowed"
+    
+    file.seek(0, os.SEEK_END)
+    size = file.tell()
+    file.seek(0)
+    
+    if size > MAX_FILE_SIZE:
+        return False, f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB"
+    
+    return True, "Valid file"
+
+def extract_text_content(file_path, content_type):
+    """Extract text from uploaded file"""
+    try:
+        if content_type == 'text/plain':
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                return content.strip()
+        elif content_type == 'application/pdf':
+            return None
+    except Exception as e:
+        print(f"Error extracting text: {e}")
         return None
-    else:
-        return puzzle
+
+def validate_crossword_data(data):
+    """Validate the structure of generated crossword data"""
+    required_fields = ['metadata', 'answerGrid', 'userGrid', 'words']
     
-def generate_guest_puzzle(file):
-    if file is None:
-        return "No file provided."
-    try:
-        #here, set the puzzle id to be the date and time it was created
-        puzzle_id = datetime.now().strftime("%Y%m%d%H%M%S")
-
-        genai_file = genai_client.files.upload(file=file)
-
-        prompt = """
-        Based on the content of the uploaded file, generate a crossword puzzle in JSON format for a Next.js frontend.
-        
-        Requirements:
-        1. Extract 8-12 key terms from the file content
-        2. Create two 30x30 crossword grids, one should contain all of the correct letters filled in, and the other should be empty
-        3. Use null for empty cells, letters for filled cells, and numbers for word starts
-        4. Ensure words intersect logically, sharing letters where applicable for a valid crossword puzzle
-        
-        for your understanding:
-        the filled grid is the answer key, while the empty grid is what the user will see and fill in.
-
-        Return ONLY valid JSON with this exact structure:
-        {
-          "metadata": {
-            "puzzleID": "puzzle_id",
-            "title": "Generated from [filename]",
-            "completed": false
-          },
-          "AnswerGrid": {[
-            // 30x30 array where null = empty cell, letters for filled cells
-          ],
-          "UserGrid": [
-            // 30x30 array where null = empty cell
-          ],
-          "words": [
-            {
-              "word": "EXAMPLE", "direction": across|down, "number": 1
-              "word": "NEWLINE", "direction", across|down, "number": 2
-          ],
-        }
-
-        here is an example puzzle to follow, albeit with a 6x6 grid for simplicity
-        (they're spaced out here for readability, but should be continuous arrays in actual JSON, so 6 rows of 6 elements each for this example):
-        {
-  "metadata": {
-    "puzzleID": "puzzle_id",
-    "title": "Generated from sample.txt",
-    "completed": false
-  },
-
-  "answerGrid": [
-    ["C",  "A",  "T",  null, null, null],
-    [null, null, "A",  null, null, null],
-    [null, null, "R",  "A",  "T",  null],
-    [null, null, null, "R",  null, null],
-    [null, null, null, "T",  null, null],
-    [null, null, null, null, null, null]
-  ],
-
-  "userGrid": [
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null]
-  ],
-
-  "words": [
-    {
-      "number": 1,
-      "word": "CAT",
-      "direction": "across",
-      "startRow": 0,
-      "startCol": 0,
-      "length": 3,
-      "hint": "A small domesticated feline."
-    },
-    {
-      "number": 2,
-      "word": "TAR",
-      "direction": "down",
-      "startRow": 2,
-      "startCol": 0,
-      "length": 3,
-      "hint": "A black viscous material used on roads."
-    },
-    {
-      "number": 3,
-      "word": "RAT",
-      "direction": "across",
-      "startRow": 2,
-      "startCol": 2,
-      "length": 3,
-      "hint": "A rodent resembling a large mouse."
-    },
-    {
-      "number": 4,
-      "word": "ART",
-      "direction": "down",
-      "startRow": 3,
-      "startCol": 2,
-      "length": 3,
-      "hint": "Human creative expression."
-    }
-  ]
-}
-
-        """
-
-        response = genai_client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=[prompt, genai_file]
-        )
-
-        if genai_file.name is not None:
-            genai_client.files.delete(name=genai_file.name)
-
-        # Parse the AI response
-        try:
-            puzzle_data = json.loads(response.text)
-        except json.JSONDecodeError:
-            print("Failed to parse AI response as JSON")
-            return None
-
-        try:
-            #save to database
-            puzzles_collection = get_puzzles_collection()
-            puzzle_document = {
-                "metadata": puzzle_data.get("metadata", {}),
-                "AnswerGrid": puzzle_data.get("AnswerGrid", []),
-                "UserGrid": puzzle_data.get("UserGrid", []),
-                "words": puzzle_data.get("words", []),
-            }
-            result = puzzles_collection.insert_one(puzzle_document)
-            puzzle_document["_id"] = str(result.inserted_id)
-            return puzzle_document
-        except Exception as db_error:
-            print(f"Error saving puzzle to database: {db_error}")
-    except:
-        return "Error! Backtrack with debugger."
-
-def generate_user_puzzles(file, user_id):
-    if file is None:
-        return "No file provided."
+    for field in required_fields:
+        if field not in data:
+            return False, f"Missing required field: {field}"
     
-    if user_id is None:
-        return "No user ID provided, please provide a valid user ID."
-    try:
-        
-        #here, set the puzzle id to be the date and time it was created
-        puzzle_id = datetime.now().strftime("%Y%m%d%H%M%S")
-
-
-        genai_file = genai_client.files.upload(file=file)
-
-        prompt = """
-        Based on the content of the uploaded file, generate a crossword puzzle in JSON format for a Next.js frontend.
-        
-        Requirements:
-        1. Extract 8-12 key terms from the file content
-        2. Create two 30x30 crossword grids, one should contain all of the correct letters filled in, and the other should be empty
-        3. Use null for empty cells, letters for filled cells, and numbers for word starts
-        4. Ensure words intersect logically, sharing letters where applicable for a valid crossword puzzle
-        
-        for your understanding:
-        the filled grid is the answer key, while the empty grid is what the user will see and fill in.
-
-        Return ONLY valid JSON with this exact structure:
-        {
-          "metadata": {
-            "puzzleID": "puzzle_id",
-            "userID": "user_id",
-            "title": "Generated from [filename]",
-            "completed": false
-          },
-          "AnswerGrid": {[
-            // 30x30 array where null = empty cell, letters for filled cells
-          ],
-          "UserGrid": [
-            // 30x30 array where null = empty cell
-          ],
-          "words": [
-            {
-              "word": "EXAMPLE", "direction": across|down, "number": 1
-              "word": "NEWLINE", "direction", across|down, "number": 2
-          ],
-        }
-
-        here is an example puzzle to follow, albeit with a 6x6 grid for simplicity
-        (they're spaced out here for readability, but should be continuous arrays in actual JSON, so 6 rows of 6 elements each for this example):
-        {
-  "metadata": {
-    "puzzleID": "puzzle_id",
-    "userID": "user_id",
-    "title": "Generated from sample.txt",
-    "completed": false
-  },
-
-  "answerGrid": [
-    ["C",  "A",  "T",  null, null, null],
-    [null, null, "A",  null, null, null],
-    [null, null, "R",  "A",  "T",  null],
-    [null, null, null, "R",  null, null],
-    [null, null, null, "T",  null, null],
-    [null, null, null, null, null, null]
-  ],
-
-  "userGrid": [
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null]
-  ],
-
-  "words": [
-    {
-      "number": 1,
-      "word": "CAT",
-      "direction": "across",
-      "startRow": 0,
-      "startCol": 0,
-      "length": 3,
-      "hint": "A small domesticated feline."
-    },
-    {
-      "number": 2,
-      "word": "TAR",
-      "direction": "down",
-      "startRow": 2,
-      "startCol": 0,
-      "length": 3,
-      "hint": "A black viscous material used on roads."
-    },
-    {
-      "number": 3,
-      "word": "RAT",
-      "direction": "across",
-      "startRow": 2,
-      "startCol": 2,
-      "length": 3,
-      "hint": "A rodent resembling a large mouse."
-    },
-    {
-      "number": 4,
-      "word": "ART",
-      "direction": "down",
-      "startRow": 3,
-      "startCol": 2,
-      "length": 3,
-      "hint": "Human creative expression."
-    }
-  ]
-}
-
-        """
-
-        response = genai_client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=[prompt, genai_file]
-        )
-
-        if genai_file.name is not None:
-            genai_client.files.delete(name=genai_file.name)
-
-        # Parse the AI response
-        try:
-            puzzle_data = json.loads(response.text)
-        except json.JSONDecodeError:
-            print("Failed to parse AI response as JSON")
-            return None
-
-        try:
-            #save to database
-            puzzles_collection = get_puzzles_collection()
-            puzzle_document = {
-                "metadata": puzzle_data.get("metadata", {}),
-                "AnswerGrid": puzzle_data.get("AnswerGrid", []),
-                "UserGrid": puzzle_data.get("UserGrid", []),
-                "words": puzzle_data.get("words", []),
-            }
-            result = puzzles_collection.insert_one(puzzle_document)
-            puzzle_document["_id"] = str(result.inserted_id)
-            return puzzle_document
-        except Exception as db_error:
-            print(f"Error saving puzzle to database: {db_error}")
-    except:
-        return "Error! Backtrack with debugger."
-
-def delete_user_puzzle(puzzle_id, user_id):
-    puzzles_collection = get_puzzles_collection()
-    result = puzzles_collection.delete_one({"puzzle_id": puzzle_id})
-    return result.deleted_count > 0
-
-def update_guest_puzzle_completion(puzzle_id, completed):
-    #1. find the puzzle from the db (by puzzle_id, will be the most recent state that was last saved)
-    #2. update its 'completed' field to True if completed, AnswerGrid with all the letters in places where the user placed them
-
-    puzzles_collection = get_puzzles_collection()
-    result = puzzles_collection.find_one_and_update(
-        {"puzzle_id": puzzle_id},
-        {"$set": {"completed": str(completed)}},
-        return_document=True
-    )
-      #something where the result is the updated document, maybe I make a copy 
-    return result
-
-def return_guest_puzzle(puzzle_id):
-    puzzles_collection = get_puzzles_collection()
-    puzzle = puzzles_collection.find_one({"puzzle_id": puzzle_id})
-    if puzzle is None:
-        print("No puzzle found with the given puzzle_id.")
-        return None
-    else:
-        return puzzle
+    metadata = data['metadata']
+    if 'gridSize' not in metadata:
+        return False, "Missing gridSize in metadata"
     
-def generate_guest_puzzle(file):
+    grid_size = metadata['gridSize']
+    answer_grid = data['answerGrid']
+    user_grid = data['userGrid']
+    
+    if not isinstance(answer_grid, list) or len(answer_grid) != grid_size:
+        return False, f"answerGrid must be {grid_size}x{grid_size} array"
+    
+    if not isinstance(user_grid, list) or len(user_grid) != grid_size:
+        return False, f"userGrid must be {grid_size}x{grid_size} array"
+    
+    for i, (answer_row, user_row) in enumerate(zip(answer_grid, user_grid)):
+        if not isinstance(answer_row, list) or len(answer_row) != grid_size:
+            return False, f"answerGrid row {i} must have {grid_size} elements"
+        if not isinstance(user_row, list) or len(user_row) != grid_size:
+            return False, f"userGrid row {i} must have {grid_size} elements"
+    
+    if not isinstance(data['words'], list) or len(data['words']) == 0:
+        return False, "Must have at least one word"
+    
+    return True, "Valid crossword data"
+
+def generate_crossword_puzzle(file):
+    """Generate crossword puzzle from uploaded file"""
     if file is None:
-        return "No file provided."
+        return {"success": False, "error": "No file provided"}
+    
+    is_valid, message = validate_file(file)
+    if not is_valid:
+        return {"success": False, "error": message}
+    
+    filename = secure_filename(file.filename)
+    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+    file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+    
     try:
-        #here, set the puzzle id to be the date and time it was created
-        puzzle_id = datetime.now().strftime("%Y%m%d%H%M%S")
-
-        genai_file = genai_client.files.upload(file=file)
-
-        prompt = """
-        Based on the content of the uploaded file, generate a crossword puzzle in JSON format for a Next.js frontend.
+        file.save(file_path)
         
-        Requirements:
-        1. Extract 8-12 key terms from the file content
-        2. Create two 30x30 crossword grids, one should contain all of the correct letters filled in, and the other should be empty
-        3. Use null for empty cells, letters for filled cells, and numbers for word starts
-        4. Ensure words intersect logically, sharing letters where applicable for a valid crossword puzzle
+        text_content = extract_text_content(file_path, file.content_type)
+        if not text_content:
+            return {"success": False, "error": "Could not extract text from file"}
         
-        for your understanding:
-        the filled grid is the answer key, while the empty grid is what the user will see and fill in.
-
-        Return ONLY valid JSON with this exact structure:
-        {
-          "metadata": {
-            "puzzleID": "puzzle_id",
-            "title": "Generated from [filename]",
-            "completed": false
-          },
-          "AnswerGrid": {[
-            // 30x30 array where null = empty cell, letters for filled cells
-          ],
-          "UserGrid": [
-            // 30x30 array where null = empty cell
-          ],
-          "words": [
-            {
-              "word": "EXAMPLE", "direction": across|down, "number": 1
-              "word": "NEWLINE", "direction", across|down, "number": 2
-          ],
-        }
-
-        here is an example puzzle to follow, albeit with a 6x6 grid for simplicity
-        (they're spaced out here for readability, but should be continuous arrays in actual JSON, so 6 rows of 6 elements each for this example):
-        {
-  "metadata": {
-    "puzzleID": "puzzle_id",
-    "title": "Generated from sample.txt",
-    "completed": false
-  },
-
-  "answerGrid": [
-    ["C",  "A",  "T",  null, null, null],
-    [null, null, "A",  null, null, null],
-    [null, null, "R",  "A",  "T",  null],
-    [null, null, null, "R",  null, null],
-    [null, null, null, "T",  null, null],
-    [null, null, null, null, null, null]
-  ],
-
-  "userGrid": [
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null],
-    [null, null, null, null, null, null]
-  ],
-
-  "words": [
-    {
-      "number": 1,
-      "word": "CAT",
-      "direction": "across",
-      "startRow": 0,
-      "startCol": 0,
-      "length": 3,
-      "hint": "A small domesticated feline."
-    },
-    {
-      "number": 2,
-      "word": "TAR",
-      "direction": "down",
-      "startRow": 2,
-      "startCol": 0,
-      "length": 3,
-      "hint": "A black viscous material used on roads."
-    },
-    {
-      "number": 3,
-      "word": "RAT",
-      "direction": "across",
-      "startRow": 2,
-      "startCol": 2,
-      "length": 3,
-      "hint": "A rodent resembling a large mouse."
-    },
-    {
-      "number": 4,
-      "word": "ART",
-      "direction": "down",
-      "startRow": 3,
-      "startCol": 2,
-      "length": 3,
-      "hint": "Human creative expression."
-    }
-  ]
-}
-
-        """
-
-        response = genai_client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=[prompt, genai_file]
-        )
-
-        if genai_file.name is not None:
-            genai_client.files.delete(name=genai_file.name)
-
-        # Parse the AI response
+        if len(text_content) < 100:
+            return {"success": False, "error": "File content too short. Please provide more substantial notes (at least 100 characters)."}
+        
         try:
-            puzzle_data = json.loads(response.text)
-        except json.JSONDecodeError:
-            print("Failed to parse AI response as JSON")
-            return None
-
-        try:
-            #save to database
-            puzzles_collection = get_puzzles_collection()
-            puzzle_document = {
-                "metadata": puzzle_data.get("metadata", {}),
-                "AnswerGrid": puzzle_data.get("AnswerGrid", []),
-                "UserGrid": puzzle_data.get("UserGrid", []),
-                "words": puzzle_data.get("words", []),
+            prompt = create_crossword_prompt()
+            full_prompt = f"{prompt}\n\nFile content:\n{text_content}"
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            response = model.generate_content(full_prompt)
+            
+            response_text = response.text.strip()
+            if response_text.startswith('```json'):
+                response_text = response_text[7:]
+            if response_text.endswith('```'):
+                response_text = response_text[:-3]
+            response_text = response_text.strip()
+            
+            try:
+                puzzle_data = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                return {"success": False, "error": f"AI returned invalid JSON: {str(e)}"}
+            
+            is_valid_puzzle, validation_message = validate_crossword_data(puzzle_data)
+            if not is_valid_puzzle:
+                return {"success": False, "error": f"Invalid puzzle structure: {validation_message}"}
+            
+            puzzle_id = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+            puzzle_data['metadata']['puzzleID'] = puzzle_id
+            puzzle_data['metadata']['title'] = f"Crossword from {filename}"
+            
+            return {
+                "success": True,
+                "puzzle": puzzle_data
             }
-            result = puzzles_collection.insert_one(puzzle_document)
-            puzzle_document["_id"] = str(result.inserted_id)
-            return puzzle_document
-        except Exception as db_error:
-            print(f"Error saving puzzle to database: {db_error}")
-    except:
-        return "Error! Backtrack with debugger."
+            
+        except Exception as e:
+            return {"success": False, "error": f"Error generating crossword: {str(e)}"}
+                    
+    except Exception as e:
+        return {"success": False, "error": f"Error generating crossword: {str(e)}"}
+    
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
