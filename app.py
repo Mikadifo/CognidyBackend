@@ -1,6 +1,5 @@
 from datetime import timedelta
-from flask import Flask, Response, request
-from flask import Blueprint, Flask
+from flask import Flask, Response, request, Blueprint
 from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
 from config.env_config import get_env_config
@@ -14,24 +13,25 @@ from routes.puzzles_pairs import puzzles_pair_bp
 from flask_jwt_extended import JWTManager
 
 app = Flask(__name__)
+CORS(
+    app,
+    #origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app"],
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    intercept_exceptions=True
+)
 env = get_env_config()
 
 app.config["JWT_SECRET_KEY"] = env.JWT_SECRET_KEY
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=15)
 
 jwt = JWTManager(app)
-CORS(
-    app,
-    # origins=["http://localhost:3000", "https://cognidy-frontend.vercel.app"],
-    supports_credentials=True,
-    allow_headers=["Content-Type", "Authorization"],
-    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-)
 
-@app.before_request
-def handle_options():
-    if request.method == 'OPTIONS':
-        return Response(status=200)
+# @app.before_request
+# def handle_options():
+    # if request.method == 'OPTIONS':
+        # return Response(status=200)
 
 # Get database instance (connection handled in database.py)
 api_bp = Blueprint("api", __name__)
