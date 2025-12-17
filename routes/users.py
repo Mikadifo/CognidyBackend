@@ -4,7 +4,16 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from database import get_users_collection
 from flask import Blueprint, request, jsonify
 import os
+import re
 
+def is_strong_password(pwd: str) -> bool:
+    return (
+        len(pwd) >= 8
+        and re.search(r"[A-Z]", pwd)       # at least 1 uppercase
+        and re.search(r"[a-z]", pwd)       # at least 1 lowercase
+        and re.search(r"[0-9]", pwd)       # at least 1 number
+        and re.search(r"[!@#$%^&*(),.?\":{}|<>]", pwd)  # at least 1 special char
+    )
 
 # Create Blueprint
 users_bp = Blueprint("users", __name__)
@@ -19,6 +28,10 @@ def signup():
 
     if not username or not email or not password:
         return jsonify({"error": "All fields are required"}), 400
+    
+
+    if not is_strong_password(password):
+        return jsonify({"error": "Password must be 8+ chars, include upper/lowercase, number, and special symbol."}), 400
 
     # Check if user already exists
     if get_users_collection().find_one({"username": username}):
@@ -29,8 +42,12 @@ def signup():
 
     # Insert user
     get_users_collection().insert_one(
-        {"username": username, "email": email, "password": hashed_pw}
-    )
+        {"username": username, "email": email, "password": hashed_pw,
+         "settings": {
+        "autoDeleteGeneratedContent": True 
+        }
+    })
+    
 
     access_token = create_access_token(identity=username)
 
@@ -73,7 +90,55 @@ def get_current_user():
         }
     }), 200
 
- 
+# Get user settings
+@users_bp.route("/settings", methods=["GET"])
+@jwt_required()
+def get_user_settings():
+    current_username = get_jwt_identity()
+
+    user = get_users_collection().find_one(
+        {"username": current_username},
+        {"_id": 0, "settings": 1}
+    )
+
+    if not user or "settings" not in user:
+        return jsonify({
+            "data": {
+                "settings": {
+                    "autoDeleteGeneratedContent": True
+                }
+            }
+        }), 200
+
+    return jsonify({
+        "data": {
+            "settings": user["settings"]
+        }
+    }), 200
+
+
+# Update user settings
+@users_bp.route("/settings", methods=["PUT"])
+@jwt_required()
+def update_user_settings():
+    current_username = get_jwt_identity()
+    data = request.get_json()
+
+    if not data or "autoDeleteGeneratedContent" not in data:
+        return jsonify({"error": "Invalid settings data"}), 400
+
+    get_users_collection().update_one(
+        {"username": current_username},
+        {
+            "$set": {
+                "settings.autoDeleteGeneratedContent": bool(
+                    data["autoDeleteGeneratedContent"]
+                )
+            }
+        }
+    )
+
+    return jsonify({"message": "Settings updated successfully"}), 200
 
 
 @users_bp.route("/update", methods=["PUT"])
@@ -120,6 +185,9 @@ def reset_password():
 
     if not password or not new_password:
         return jsonify({"error": "Both fields required"}), 400
+    
+    if not is_strong_password(new_password):
+        return jsonify({"error": "Weak password. Must include upper, lower, number, special, 8+ chars."}), 400
 
     users = get_users_collection()
     user = users.find_one({"username": current_username})
@@ -205,6 +273,10 @@ def reset_password_public():
     data = request.get_json()
     token = data.get("token")
     new_password = data.get("new_password")
+
+    if not is_strong_password(new_password):
+        return jsonify({"error": "Weak password. Must include upper, lower, number, special, 8+ chars."}), 400
+
 
     if not token or not new_password:
         return jsonify({"message": "Token and new password required"}), 400

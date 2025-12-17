@@ -20,7 +20,6 @@ CORS(
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    intercept_exceptions=True
 )
 env = get_env_config()
 
